@@ -34,6 +34,19 @@ CATEGORICAL_COLUMNS = [
     "seller",
 ]
 
+TARGET_STAT_GROUPS = [
+    "brand",
+    "model",
+    "bodyType",
+    "fuelType",
+    "gearbox",
+    "regionCode",
+    "brand_model",
+    "brand_bodyType",
+]
+
+TARGET_STAT_AGGS = ["mean", "median", "min", "max", "count"]
+
 
 def _parse_date_column(series: pd.Series) -> tuple[pd.Series, pd.Series]:
     raw = series.astype("string")
@@ -148,12 +161,12 @@ def add_target_stat_features(
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     train_out = train_df.copy()
     test_out = test_df.copy()
-    group_cols = ["brand", "model", "bodyType", "fuelType", "gearbox", "regionCode", "brand_model", "brand_bodyType"]
+    group_cols = TARGET_STAT_GROUPS
 
     for col in group_cols:
         stats = (
             train_out.groupby(col, dropna=False)[target_col]
-            .agg(["mean", "median", "min", "max", "count"])
+            .agg(TARGET_STAT_AGGS)
             .rename(
                 columns={
                     "mean": f"{col}_price_mean",
@@ -167,6 +180,39 @@ def add_target_stat_features(
 
         train_out = train_out.merge(stats, on=col, how="left")
         test_out = test_out.merge(stats, on=col, how="left")
+
+    return train_out, test_out
+
+
+def add_fold_target_stat_features(
+    train_df: pd.DataFrame,
+    test_df: pd.DataFrame,
+    folds: list[tuple[np.ndarray, np.ndarray]],
+    target_col: str = "price",
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    train_out = train_df.copy()
+    test_out = test_df.copy()
+
+    for col in TARGET_STAT_GROUPS:
+        feature_names = [f"{col}_price_{agg}" for agg in TARGET_STAT_AGGS]
+        train_block = pd.DataFrame(index=train_out.index, columns=feature_names, dtype="float64")
+
+        for tr_idx, va_idx in folds:
+            source = train_out.iloc[tr_idx]
+            valid = train_out.iloc[va_idx]
+            stats = source.groupby(col, dropna=False)[target_col].agg(TARGET_STAT_AGGS)
+            for agg in TARGET_STAT_AGGS:
+                feature_name = f"{col}_price_{agg}"
+                train_block.loc[train_block.index[va_idx], feature_name] = valid[col].map(stats[agg]).to_numpy()
+
+        full_stats = train_out.groupby(col, dropna=False)[target_col].agg(TARGET_STAT_AGGS)
+        test_block = pd.DataFrame(index=test_out.index, columns=feature_names, dtype="float64")
+        for agg in TARGET_STAT_AGGS:
+            feature_name = f"{col}_price_{agg}"
+            test_block[feature_name] = test_out[col].map(full_stats[agg]).to_numpy()
+
+        train_out[feature_names] = train_block
+        test_out[feature_names] = test_block
 
     return train_out, test_out
 

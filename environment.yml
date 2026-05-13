@@ -1,0 +1,15 @@
+name: tianchi-car-local
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pandas
+  - numpy
+  - scikit-learn
+  - lightgbm
+  - catboost
+  - xgboost
+  - matplotlib
+  - seaborn
+  - pyarrow
+  - jupyter

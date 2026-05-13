@@ -1,0 +1,13 @@
+.conda/
+__pycache__/
+*.pyc
+catboost_info/
+used_car_train_20200313.csv
+used_car_testA_20200313.csv
+used_car_testB_20200421.csv
+used_car_sample_submit.csv
+data/*.csv
+user_data/*
+!user_data/.gitkeep
+prediction_result/*
+!prediction_result/.gitkeep

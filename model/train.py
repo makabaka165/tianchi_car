@@ -91,6 +91,7 @@ def train_catboost(
     random_state: int = 42,
     use_log_target: bool = False,
     folds: list[tuple[np.ndarray, np.ndarray]] | None = None,
+    model_params: dict | None = None,
 ) -> TrainingArtifacts:
     fold_indices = folds or list(KFold(n_splits=n_splits, shuffle=True, random_state=random_state).split(X))
     oof = np.zeros(len(X), dtype=np.float64)
@@ -98,6 +99,15 @@ def train_catboost(
     scores: list[float] = []
 
     cat_idx = [X.columns.get_loc(col) for col in categorical_features if col in X.columns]
+    params = {
+        "iterations": 2200,
+        "learning_rate": 0.03,
+        "depth": 7,
+        "l2_leaf_reg": 5.0,
+        "od_wait": 100,
+    }
+    if model_params:
+        params.update(model_params)
 
     for fold, (tr_idx, va_idx) in enumerate(fold_indices, start=1):
         X_tr, X_va = X.iloc[tr_idx].copy(), X.iloc[va_idx].copy()
@@ -107,14 +117,14 @@ def train_catboost(
         model = CatBoostRegressor(
             loss_function="RMSE" if use_log_target else "MAE",
             eval_metric="RMSE" if use_log_target else "MAE",
-            iterations=2200,
-            learning_rate=0.03,
-            depth=7,
-            l2_leaf_reg=5.0,
+            iterations=params["iterations"],
+            learning_rate=params["learning_rate"],
+            depth=params["depth"],
+            l2_leaf_reg=params["l2_leaf_reg"],
             random_seed=random_state + fold,
             verbose=False,
             od_type="Iter",
-            od_wait=100,
+            od_wait=params["od_wait"],
         )
         model.fit(
             X_tr,
@@ -134,4 +144,5 @@ def train_catboost(
         test_preds += pred_test / len(fold_indices)
 
     suffix = "_log1p" if use_log_target else ""
-    return TrainingArtifacts(oof, test_preds, scores, f"catboost{suffix}")
+    model_name = model_params.get("model_name", "catboost") if model_params else "catboost"
+    return TrainingArtifacts(oof, test_preds, scores, f"{model_name}{suffix}")

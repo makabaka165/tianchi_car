@@ -42,6 +42,65 @@ def search_blend_weight(
     return best_weight, best_mae
 
 
+def evaluate_catboost_candidates(
+    y: pd.Series,
+    lgb_artifacts,
+    X_cat: pd.DataFrame,
+    X_cat_test: pd.DataFrame,
+    cat_categorical_features: list[str],
+    folds,
+):
+    candidates = [
+        {
+            "model_name": "catboost_rawprice_cfg_a",
+            "iterations": 1800,
+            "learning_rate": 0.05,
+            "depth": 6,
+            "l2_leaf_reg": 3.0,
+            "od_wait": 80,
+        },
+        {
+            "model_name": "catboost_rawprice_cfg_b",
+            "iterations": 2400,
+            "learning_rate": 0.03,
+            "depth": 8,
+            "l2_leaf_reg": 7.0,
+            "od_wait": 120,
+        },
+    ]
+
+    results = []
+    best = None
+
+    for params in candidates:
+        artifacts = train_catboost(
+            X_cat.copy(),
+            y,
+            X_cat_test.copy(),
+            cat_categorical_features,
+            use_log_target=False,
+            folds=folds,
+            model_params=params,
+        )
+        cat_mae = mean_absolute_error(y, artifacts.oof_predictions)
+        best_cat_weight, blend_oof_mae = search_blend_weight(
+            y, lgb_artifacts.oof_predictions, artifacts.oof_predictions
+        )
+        result = {
+            "params": params,
+            "artifacts": artifacts,
+            "catboost_oof_mae": cat_mae,
+            "best_catboost_weight": best_cat_weight,
+            "best_lightgbm_weight": 1.0 - best_cat_weight,
+            "blend_oof_mae": blend_oof_mae,
+        }
+        results.append(result)
+        if best is None or blend_oof_mae < best["blend_oof_mae"]:
+            best = result
+
+    return best, results
+
+
 def main() -> None:
     USER_DATA_DIR.mkdir(exist_ok=True)
     PREDICTION_DIR.mkdir(exist_ok=True)
@@ -85,19 +144,21 @@ def main() -> None:
         use_log_target=True,
         folds=folds,
     )
-    cat_artifacts = train_catboost(
-        X_cat.copy(),
-        y,
-        X_cat_test.copy(),
-        cat_categorical_features,
-        use_log_target=False,
+    best_cat_result, cat_results = evaluate_catboost_candidates(
+        y=y,
+        lgb_artifacts=lgb_artifacts,
+        X_cat=X_cat,
+        X_cat_test=X_cat_test,
+        cat_categorical_features=cat_categorical_features,
         folds=folds,
     )
+    cat_artifacts = best_cat_result["artifacts"]
 
     lgb_mae = mean_absolute_error(y, lgb_artifacts.oof_predictions)
-    cat_mae = mean_absolute_error(y, cat_artifacts.oof_predictions)
-    best_cat_weight, blend_oof_mae = search_blend_weight(y, lgb_artifacts.oof_predictions, cat_artifacts.oof_predictions)
-    best_lgb_weight = 1.0 - best_cat_weight
+    cat_mae = best_cat_result["catboost_oof_mae"]
+    best_cat_weight = best_cat_result["best_catboost_weight"]
+    best_lgb_weight = best_cat_result["best_lightgbm_weight"]
+    blend_oof_mae = best_cat_result["blend_oof_mae"]
 
     blended_test = best_lgb_weight * lgb_artifacts.test_predictions + best_cat_weight * cat_artifacts.test_predictions
     blended_test = np.clip(blended_test, 0, None)
@@ -123,6 +184,17 @@ def main() -> None:
         "blend_oof_mae": blend_oof_mae,
         "lightgbm_feature_count": int(X_lgb.shape[1]),
         "catboost_feature_count": int(X_cat.shape[1]),
+        "catboost_candidates": [
+            {
+                "model_name": result["artifacts"].model_name,
+                "catboost_oof_mae": result["catboost_oof_mae"],
+                "best_lightgbm_weight": result["best_lightgbm_weight"],
+                "best_catboost_weight": result["best_catboost_weight"],
+                "blend_oof_mae": result["blend_oof_mae"],
+                "params": result["params"],
+            }
+            for result in cat_results
+        ],
         "train_rows": int(X_lgb.shape[0]),
         "test_rows": int(X_lgb_test.shape[0]),
     }

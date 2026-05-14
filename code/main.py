@@ -52,35 +52,45 @@ def main() -> None:
     train_df = build_features(train_raw, is_train=True)
     test_df = build_features(test_raw, is_train=False)
 
-    train_df, test_df = add_frequency_features(train_df, test_df)
+    base_train_df, base_test_df = add_frequency_features(train_df, test_df)
     folds = list(KFold(n_splits=N_SPLITS, shuffle=True, random_state=RANDOM_STATE).split(train_df))
-    train_df, test_df = add_fold_target_stat_features(train_df, test_df, folds=folds)
-    train_df, test_df = fill_missing_values(train_df, test_df)
+    lgb_train_df, lgb_test_df = add_fold_target_stat_features(base_train_df, base_test_df, folds=folds)
 
-    y = train_df["price"].astype(float)
-    X = train_df.drop(columns=["price"])
-    X_test = test_df.copy()
+    lgb_train_df, lgb_test_df = fill_missing_values(lgb_train_df, lgb_test_df)
+    cat_train_df, cat_test_df = fill_missing_values(base_train_df.copy(), base_test_df.copy())
 
-    categorical_features = [
+    y = lgb_train_df["price"].astype(float)
+
+    X_lgb = lgb_train_df.drop(columns=["price"])
+    X_lgb_test = lgb_test_df.copy()
+    lgb_categorical_features = [
         col
-        for col in X.columns
-        if pd.api.types.is_string_dtype(X[col]) or str(X[col].dtype) == "category"
+        for col in X_lgb.columns
+        if pd.api.types.is_string_dtype(X_lgb[col]) or str(X_lgb[col].dtype) == "category"
+    ]
+
+    X_cat = cat_train_df.drop(columns=["price"])
+    X_cat_test = cat_test_df.copy()
+    cat_categorical_features = [
+        col
+        for col in X_cat.columns
+        if pd.api.types.is_string_dtype(X_cat[col]) or str(X_cat[col].dtype) == "category"
     ]
 
     lgb_artifacts = train_lightgbm(
-        X.copy(),
+        X_lgb.copy(),
         y,
-        X_test.copy(),
-        categorical_features,
+        X_lgb_test.copy(),
+        lgb_categorical_features,
         use_log_target=True,
         folds=folds,
     )
     cat_artifacts = train_catboost(
-        X.copy(),
+        X_cat.copy(),
         y,
-        X_test.copy(),
-        categorical_features,
-        use_log_target=True,
+        X_cat_test.copy(),
+        cat_categorical_features,
+        use_log_target=False,
         folds=folds,
     )
 
@@ -111,9 +121,10 @@ def main() -> None:
         "best_lightgbm_weight": best_lgb_weight,
         "best_catboost_weight": best_cat_weight,
         "blend_oof_mae": blend_oof_mae,
-        "feature_count": int(X.shape[1]),
-        "train_rows": int(X.shape[0]),
-        "test_rows": int(X_test.shape[0]),
+        "lightgbm_feature_count": int(X_lgb.shape[1]),
+        "catboost_feature_count": int(X_cat.shape[1]),
+        "train_rows": int(X_lgb.shape[0]),
+        "test_rows": int(X_lgb_test.shape[0]),
     }
     (USER_DATA_DIR / "metrics.json").write_text(
         json.dumps(metrics, ensure_ascii=False, indent=2),

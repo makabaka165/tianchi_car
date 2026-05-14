@@ -24,6 +24,8 @@ PREDICTION_DIR = ROOT / "prediction_result"
 
 N_SPLITS = 5
 RANDOM_STATE = 42
+LGB_CACHE_PRED = USER_DATA_DIR / "lgb_cache_predictions.npz"
+LGB_CACHE_META = USER_DATA_DIR / "lgb_cache_meta.json"
 
 
 def search_blend_weight(
@@ -40,6 +42,38 @@ def search_blend_weight(
             best_mae = score
             best_weight = float(cat_weight)
     return best_weight, best_mae
+
+
+def load_lgb_cache():
+    if not LGB_CACHE_PRED.exists() or not LGB_CACHE_META.exists():
+        return None
+    arrays = np.load(LGB_CACHE_PRED)
+    meta = json.loads(LGB_CACHE_META.read_text(encoding="utf-8"))
+    return {
+        "oof_predictions": arrays["oof_predictions"],
+        "test_predictions": arrays["test_predictions"],
+        "cv_scores": meta["cv_scores"],
+        "model_name": meta["model_name"],
+    }
+
+
+def save_lgb_cache(artifacts) -> None:
+    np.savez_compressed(
+        LGB_CACHE_PRED,
+        oof_predictions=artifacts.oof_predictions,
+        test_predictions=artifacts.test_predictions,
+    )
+    LGB_CACHE_META.write_text(
+        json.dumps(
+            {
+                "cv_scores": artifacts.cv_scores,
+                "model_name": artifacts.model_name,
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
 
 
 def evaluate_catboost_candidates(
@@ -136,14 +170,30 @@ def main() -> None:
         if pd.api.types.is_string_dtype(X_cat[col]) or str(X_cat[col].dtype) == "category"
     ]
 
-    lgb_artifacts = train_lightgbm(
-        X_lgb.copy(),
-        y,
-        X_lgb_test.copy(),
-        lgb_categorical_features,
-        use_log_target=True,
-        folds=folds,
-    )
+    lgb_cache = load_lgb_cache()
+    if lgb_cache is None:
+        lgb_artifacts = train_lightgbm(
+            X_lgb.copy(),
+            y,
+            X_lgb_test.copy(),
+            lgb_categorical_features,
+            use_log_target=True,
+            folds=folds,
+        )
+        save_lgb_cache(lgb_artifacts)
+        lgb_cache_used = False
+    else:
+        lgb_artifacts = type(
+            "CachedArtifacts",
+            (),
+            {
+                "oof_predictions": lgb_cache["oof_predictions"],
+                "test_predictions": lgb_cache["test_predictions"],
+                "cv_scores": lgb_cache["cv_scores"],
+                "model_name": lgb_cache["model_name"],
+            },
+        )()
+        lgb_cache_used = True
     best_cat_result, cat_results = evaluate_catboost_candidates(
         y=y,
         lgb_artifacts=lgb_artifacts,
@@ -176,6 +226,7 @@ def main() -> None:
         "lightgbm_cv_scores": lgb_artifacts.cv_scores,
         "lightgbm_oof_mae": lgb_mae,
         "lightgbm_model_name": lgb_artifacts.model_name,
+        "lightgbm_cache_used": lgb_cache_used,
         "catboost_cv_scores": cat_artifacts.cv_scores,
         "catboost_oof_mae": cat_mae,
         "catboost_model_name": cat_artifacts.model_name,

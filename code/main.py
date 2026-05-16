@@ -73,6 +73,14 @@ CATBOOST_CANDIDATES = {
         "l2_leaf_reg": 9.0,
         "od_wait": 140,
     },
+    "cfg_i_iterations_3200": {
+        "model_name": "cfg_i_iterations_3200",
+        "iterations": 3200,
+        "learning_rate": 0.03,
+        "depth": 8,
+        "l2_leaf_reg": 9.0,
+        "od_wait": 140,
+    },
 }
 
 

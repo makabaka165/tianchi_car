@@ -82,6 +82,14 @@ CATBOOST_CANDIDATES = {
         "l2_leaf_reg": 9.0,
         "od_wait": 140,
     },
+    "cfg_k_iterations_3400": {
+        "model_name": "cfg_k_iterations_3400",
+        "iterations": 3400,
+        "learning_rate": 0.03,
+        "depth": 8,
+        "l2_leaf_reg": 9.0,
+        "od_wait": 140,
+    },
 }
 
 EXPERIMENT_NAME = "catboost_lite_feature_plus_log"

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
 from datetime import datetime
 from dataclasses import dataclass
@@ -90,6 +91,14 @@ CATBOOST_CANDIDATES = {
         "l2_leaf_reg": 9.0,
         "od_wait": 140,
     },
+    "cfg_m_iterations_3600": {
+        "model_name": "cfg_m_iterations_3600",
+        "iterations": 3600,
+        "learning_rate": 0.03,
+        "depth": 8,
+        "l2_leaf_reg": 9.0,
+        "od_wait": 140,
+    },
 }
 
 EXPERIMENT_NAME = "catboost_lite_feature_plus_log"
@@ -145,6 +154,50 @@ def save_lgb_cache(artifacts) -> None:
     )
 
 
+def find_record_log_path() -> Path:
+    record_prefix = bytes.fromhex("2320e8aeb0e5bd95")
+    for path in ROOT.glob("*.md"):
+        if path.name in {"README.md", "README_ENV.md"}:
+            continue
+        try:
+            if path.read_bytes().startswith(record_prefix):
+                return path
+        except OSError:
+            continue
+    raise FileNotFoundError("Could not locate experiment record markdown file.")
+
+
+def resolve_baseline_blend(cli_value: float | None) -> float | None:
+    if cli_value is not None:
+        return cli_value
+    if not METRICS_PATH.exists():
+        return None
+    metrics = json.loads(METRICS_PATH.read_text(encoding="utf-8"))
+    blend = metrics.get("blend_oof_mae")
+    return float(blend) if blend is not None else None
+
+
+def resolve_baseline_commit(cli_value: str | None) -> str:
+    if cli_value:
+        return cli_value
+    result = subprocess.run(
+        ["git", "rev-parse", "--short", "HEAD"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if result.returncode == 0:
+        return result.stdout.strip()
+    return "unknown"
+
+
+def format_candidate_params(params: dict) -> str:
+    ordered_keys = ["model_name", "iterations", "learning_rate", "depth", "l2_leaf_reg", "od_wait"]
+    parts = [f"{key}={params[key]}" for key in ordered_keys if key in params]
+    return ", ".join(parts)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Tianchi used car experiment entrypoint.")
     parser.add_argument(
@@ -164,6 +217,15 @@ def parse_args() -> argparse.Namespace:
         "--experiment-note",
         default=EXPERIMENT_NAME,
         help="Short note recorded in metrics and logs for this run.",
+    )
+    parser.add_argument(
+        "--baseline-blend",
+        type=float,
+        help="Baseline blend OOF MAE used for keep/rollback decisions.",
+    )
+    parser.add_argument(
+        "--baseline-commit",
+        help="Baseline commit recorded in the experiment log.",
     )
     return parser.parse_args()
 
@@ -359,20 +421,36 @@ def run_catboost_sweep(
     return metrics
 
 
-def append_experiment_log(metrics: dict, status: str, rollback_to: str | None = None) -> None:
-    log_path = ROOT / "记录.md"
+
+
+
+
+def append_experiment_log(
+    metrics: dict,
+    status: str,
+    baseline_blend: float | None,
+    baseline_commit: str,
+    rollback_to: str | None = None,
+) -> None:
+    log_path = find_record_log_path()
+    params = metrics.get("selected_catboost_params", {})
+    baseline_blend_text = f"{baseline_blend:.4f}" if baseline_blend is not None else "unknown"
     lines = [
         "",
-        f"## 实验 {metrics['run_time']} - {metrics['experiment_note']}",
+        f"## Experiment {metrics['run_time']} - {metrics['experiment_note']}",
         "",
-        f"- 模式: `{metrics['mode']}`",
-        f"- 状态: `{status}`",
-        f"- LightGBM OOF MAE: `{metrics['lightgbm_oof_mae']:.4f}`",
-        f"- CatBoost OOF MAE: `{metrics['catboost_oof_mae']:.4f}`",
-        f"- 融合 OOF MAE: `{metrics['blend_oof_mae']:.4f}`",
-        f"- 最优权重: LightGBM `{metrics['best_lightgbm_weight']:.2f}` / CatBoost `{metrics['best_catboost_weight']:.2f}`",
-        f"- 缓存使用: `{metrics['lightgbm_cache_used']}`",
-        f"- 保留点: `{rollback_to or 'keep-current'}`",
+        f"- mode: `{metrics['mode']}`",
+        f"- status: `{status}`",
+        f"- baseline_commit: `{baseline_commit}`",
+        f"- baseline_blend_oof_mae: `{baseline_blend_text}`",
+        f"- change: `CatBoost single-candidate param experiment {params.get('model_name', 'unknown')}`",
+        f"- candidate_params: `{format_candidate_params(params)}`",
+        f"- lightgbm_oof_mae: `{metrics['lightgbm_oof_mae']:.4f}`",
+        f"- catboost_oof_mae: `{metrics['catboost_oof_mae']:.4f}`",
+        f"- blend_oof_mae: `{metrics['blend_oof_mae']:.4f}`",
+        f"- best_weights: `LightGBM {metrics['best_lightgbm_weight']:.2f} / CatBoost {metrics['best_catboost_weight']:.2f}`",
+        f"- cache_used: `{metrics['lightgbm_cache_used']}`",
+        f"- rollback_commit: `{rollback_to or 'keep-current'}`",
         "",
     ]
     with log_path.open("a", encoding="utf-8") as f:

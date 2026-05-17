@@ -96,12 +96,18 @@ def build_features(df: pd.DataFrame, is_train: bool) -> pd.DataFrame:
     car_age_days = (create_dt - reg_dt).dt.days
     out["car_age_days"] = car_age_days
     out["car_age_years"] = car_age_days / 365.25
+    out["date_gap_abs"] = car_age_days.abs()
+    out["date_gap_negative"] = (car_age_days < 0).astype("int8")
 
     out["power"] = out["power"].clip(lower=0, upper=600)
     out["power_is_zero"] = (out["power"] == 0).astype("int8")
+    out["power_log1p"] = np.log1p(out["power"].clip(lower=0))
 
     out["kilometer"] = out["kilometer"].clip(lower=0)
     out["power_per_km"] = out["power"] / (out["kilometer"] + 1.0)
+    out["kilometer_log1p"] = np.log1p(out["kilometer"])
+    out["power_x_kilometer"] = out["power"] * out["kilometer"]
+    out["power_per_age"] = out["power"] / (out["car_age_days"].abs() + 1.0)
 
     out["brand_model"] = (
         out["brand"].fillna(-1).astype("Int64").astype("string")
@@ -121,6 +127,13 @@ def build_features(df: pd.DataFrame, is_train: bool) -> pd.DataFrame:
     for col in drop_cols:
         if col in out.columns:
             out = out.drop(columns=[col])
+
+    numeric_cols = [
+        col
+        for col in out.columns
+        if pd.api.types.is_numeric_dtype(out[col]) and col != "price"
+    ]
+    out["missing_count"] = out[numeric_cols].isna().sum(axis=1).astype("float32")
 
     for col in CATEGORICAL_COLUMNS + ["brand_model", "brand_bodyType"]:
         if col in out.columns:

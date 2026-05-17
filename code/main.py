@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+from datetime import datetime
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -83,6 +84,8 @@ CATBOOST_CANDIDATES = {
     },
 }
 
+EXPERIMENT_NAME = "catboost_lite_feature_plus_log"
+
 
 def search_blend_weight(
     y_true: pd.Series,
@@ -148,6 +151,11 @@ def parse_args() -> argparse.Namespace:
         action="append",
         choices=sorted(CATBOOST_CANDIDATES),
         help="Run only the specified CatBoost candidate. Repeat to run multiple candidates.",
+    )
+    parser.add_argument(
+        "--experiment-note",
+        default=EXPERIMENT_NAME,
+        help="Short note recorded in metrics and logs for this run.",
     )
     return parser.parse_args()
 
@@ -267,6 +275,7 @@ def run_catboost_sweep(
     lgb_artifacts: CachedArtifacts,
     lgb_cache_used: bool,
     candidates: list[dict],
+    experiment_note: str,
 ) -> dict:
     if lgb_artifacts.feature_count is None:
         lgb_artifacts.feature_count = int(
@@ -302,6 +311,8 @@ def run_catboost_sweep(
     predictions["price"] = predictions["price"].round(6)
 
     metrics = {
+        "experiment_note": experiment_note,
+        "run_time": datetime.now().isoformat(timespec="seconds"),
         "mode": mode,
         "lightgbm_cv_scores": lgb_artifacts.cv_scores,
         "lightgbm_oof_mae": lgb_mae,
@@ -340,6 +351,26 @@ def run_catboost_sweep(
     return metrics
 
 
+def append_experiment_log(metrics: dict, status: str, rollback_to: str | None = None) -> None:
+    log_path = ROOT / "记录.md"
+    lines = [
+        "",
+        f"## 实验 {metrics['run_time']} - {metrics['experiment_note']}",
+        "",
+        f"- 模式: `{metrics['mode']}`",
+        f"- 状态: `{status}`",
+        f"- LightGBM OOF MAE: `{metrics['lightgbm_oof_mae']:.4f}`",
+        f"- CatBoost OOF MAE: `{metrics['catboost_oof_mae']:.4f}`",
+        f"- 融合 OOF MAE: `{metrics['blend_oof_mae']:.4f}`",
+        f"- 最优权重: LightGBM `{metrics['best_lightgbm_weight']:.2f}` / CatBoost `{metrics['best_catboost_weight']:.2f}`",
+        f"- 缓存使用: `{metrics['lightgbm_cache_used']}`",
+        f"- 保留点: `{rollback_to or 'keep-current'}`",
+        "",
+    ]
+    with log_path.open("a", encoding="utf-8") as f:
+        f.write("\n".join(lines))
+
+
 def main() -> None:
     args = parse_args()
     candidates = resolve_catboost_candidates(args.candidate)
@@ -372,7 +403,15 @@ def main() -> None:
             lgb_artifacts = lgb_cache
             lgb_cache_used = True
 
-    metrics = run_catboost_sweep(args.mode, datasets, lgb_artifacts, lgb_cache_used, candidates)
+    metrics = run_catboost_sweep(
+        args.mode,
+        datasets,
+        lgb_artifacts,
+        lgb_cache_used,
+        candidates,
+        args.experiment_note,
+    )
+    append_experiment_log(metrics, status="keep" if metrics["blend_oof_mae"] < 504.4902 else "rollback")
     print(json.dumps(metrics, ensure_ascii=False, indent=2))
     print(f"Saved predictions to: {PREDICTIONS_PATH}")
 

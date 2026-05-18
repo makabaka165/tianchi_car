@@ -10,7 +10,7 @@
 - CatBoost OOF MAE: `489.53917414313685`
 - Blend OOF MAE: `482.03784116490414`
 - Best weights: LightGBM `0.27`, CatBoost `0.73`
-- Goal threshold: `Blend OOF MAE <= 482.8`
+- Goal threshold: `Blend OOF MAE <= 481.2`
 
 ## Standing Checklist For Every Round
 
@@ -25,46 +25,48 @@
 
 ## Task Queue
 
-### Task 1 - LightGBM branch refresh on current feature set
+### Task 1 - CatBoost regularization around current best depth 9 candidate
 
-- Status: `keep`
-- Direction: LightGBM improvement
-- Code area: `model/train.py` and only the minimal calling path required by the existing pipeline.
-- Primary purpose: improve the weaker LightGBM branch now that `v_*` aggregate features have already proven useful.
-- Initial change scope: small LightGBM parameter search around the current settings, keeping the training entry shape unchanged.
-- Recommended first candidate adjustment: modest leaf and regularization tuning while retaining the current learning rate and estimator scale.
-- Required execution rule: rebuild the LightGBM cache before evaluating the blended result if the cache would otherwise stay stale.
-- Keep rule: keep only if the final blended `blend_oof_mae` is strictly lower than `483.96430195171246`.
-- If kept: commit and push, then update the baseline block above.
-- If failed: revert code, restore backed-up artifacts, record the failure, and continue to Task 2.
-
-### Task 2 - One additional low-risk v-derived interaction block
-
-- Status: `rollback`
-- Direction: lightweight feature engineering
-- Code area: `feature/preprocess.py` only.
-- Allowed family: one coherent group of low-risk derived features built from existing stable columns, for example interactions involving `v_mean`, `v_std`, `v_range`, `power_log1p`, `kilometer_log1p`, or `car_age_years`. Current subtask: v-aggregate interactions with `power_log1p` and `kilometer_log1p`.
-- Constraint: do not mix multiple unrelated feature families in one round.
-- Constraint: no target leakage and no train-only statistics unless implemented with fold-aware logic already present in the pipeline.
-- Keep rule: keep only if the final blended `blend_oof_mae` is strictly lower than the latest stable baseline.
-- If failed: revert code, restore backed-up artifacts, record the failure, and continue to Task 3.
-
-### Task 3 - Blend refinement after branch updates
-
-- Status: `keep`
-- Direction: blend search refinement
-- Code area: `code/main.py` only if search resolution or blend logic actually needs a controlled adjustment.
-- Purpose: capture additional gain from better branch balance after LightGBM or feature improvements.
-- Constraint: do not broaden this into a multi-model redesign; keep it as a small refinement to the current two-branch blend process.
-- Keep rule: keep only if the final blended `blend_oof_mae` is strictly lower than the latest stable baseline.
-
-### Task 4 - CatBoost structure tuning only after non-iteration work
-
-- Status: `keep`
+- Status: `pending`
 - Direction: CatBoost structure tuning
 - Code area: `code/main.py` candidate block only.
-- Allowed parameters: choose one of `depth`, `l2_leaf_reg`, or another bounded overfitting-control parameter per round.
-- Constraint: do not resume pure `iterations` growth first.
+- Candidate name: `cfg_u_l2_10_depth9_iter4400`
+- Change: keep the current best candidate shape and change only `l2_leaf_reg` from `9.0` to `10.0`.
+- Params: `iterations=4400`, `learning_rate=0.03`, `depth=9`, `l2_leaf_reg=10.0`, `od_wait=140`.
+- Command:
+  `python -u code/main.py catboost_only_sweep --candidate cfg_u_l2_10_depth9_iter4400 --experiment-note task1_l2_10_depth9_eval --baseline-blend 482.03784116490414 --baseline-commit e1ae9fc`
+- Keep rule: keep only if the final blended `blend_oof_mae` is strictly lower than `482.03784116490414`.
+- If failed: revert code, restore backed-up artifacts, record failure, and continue to Task 2.
+
+### Task 2 - CatBoost overfitting control follow-up
+
+- Status: `blocked until Task 1 finishes or is skipped for a documented reason`
+- Direction: CatBoost structure tuning
+- Code area: `code/main.py` candidate block only.
+- Candidate name: `cfg_v_od160_depth9_iter4400`
+- Change: keep the current best candidate shape and change only `od_wait` from `140` to `160`.
+- Params: `iterations=4400`, `learning_rate=0.03`, `depth=9`, `l2_leaf_reg=9.0`, `od_wait=160`.
+- Keep rule: keep only if the final blended `blend_oof_mae` is strictly lower than the latest stable baseline.
+- If failed: revert code, restore backed-up artifacts, record failure, and continue to Task 3.
+
+### Task 3 - One narrowly scoped feature extension
+
+- Status: `blocked until at least one CatBoost structure task finishes`
+- Direction: lightweight feature engineering
+- Code area: `feature/preprocess.py` only.
+- Allowed family: one tightly bounded feature block built from already-successful stable signals, for example `v_range`, `v_std`, `power_log1p`, `kilometer_log1p`, or `car_age_years`.
+- Constraint: add one coherent family only; do not bundle unrelated features.
+- Constraint: no target leakage and no train-only statistics unless implemented through existing fold-aware logic.
+- If the change affects LightGBM inputs, refresh the LightGBM cache before evaluation.
+- Keep rule: keep only if the final blended `blend_oof_mae` is strictly lower than the latest stable baseline.
+
+### Task 4 - LightGBM follow-up only if needed
+
+- Status: `blocked until at least one feature or CatBoost direction is exhausted`
+- Direction: LightGBM follow-up tuning
+- Code area: `model/train.py` only, plus minimal calling path if necessary.
+- Purpose: revisit the LightGBM branch only if CatBoost structure tuning and the next feature block fail to produce enough gain.
+- Constraint: keep the training entry shape stable and make only one parameter change group per round.
 - Keep rule: keep only if the final blended `blend_oof_mae` is strictly lower than the latest stable baseline.
 
 ## Result Log Template
@@ -92,87 +94,7 @@ Use this template after each round:
 - Next task:
 ```
 
-
-### Task 1 Result - task1_lgb_refresh_cfg_q_eval
-
-- Status: keep
-- Started at: 2026-05-18T15:36:06
-- Finished at: 2026-05-18T16:28:40
-- Baseline commit: 62dffdb
-- Baseline Blend OOF MAE: 483.96430195171246
-- Candidate/change: LightGBM parameter refresh on current feature set; num_leaves 63 -> 95, reg_alpha 0.1 -> 0.2, reg_lambda 0.1 -> 0.2, then refresh cache and rerun cfg_q_iterations_4400
-- Command: python -u code/main.py catboost_only_sweep --candidate cfg_q_iterations_4400 --experiment-note task1_lgb_refresh_cfg_q_eval --baseline-blend 483.96430195171246 --baseline-commit 62dffdb
-- LightGBM OOF MAE: 530.2642031884868
-- CatBoost OOF MAE: 490.8413807472432
-- Blend OOF MAE: 483.17528941350145
-- Best weights: LightGBM 0.28, CatBoost 0.72
-- Fold scores: LightGBM [535.2210926036495, 532.9259499831855, 526.8230300397627, 528.7427922007341, 527.6081511151025]; CatBoost [494.12883918397375, 496.17446295398645, 487.87079826675654, 486.114736507389, 489.9180668241097]
-- Prediction file check: passed, header SaleID,price
-- Commit pushed: 8190f22
-- Rollback commit if any: none
-- Next task: Task 2 low-risk v-derived interaction block
-
-
-### Task 2 Result - task2_v_interactions_cfg_q_eval
-
-- Status: rollback
-- Started at: 2026-05-18T16:35:01
-- Finished at: 2026-05-18T17:17:14
-- Baseline commit: 8190f22
-- Baseline Blend OOF MAE: 483.17528941350145
-- Candidate/change: add one v-derived interaction block using v_mean/v_std/v_range with power_log1p and kilometer_log1p, then refresh cache and rerun cfg_q_iterations_4400
-- Command: python -u code/main.py catboost_only_sweep --candidate cfg_q_iterations_4400 --experiment-note task2_v_interactions_cfg_q_eval --baseline-blend 483.17528941350145 --baseline-commit 8190f22
-- LightGBM OOF MAE: 531.5371602819139
-- CatBoost OOF MAE: 492.2656291284221
-- Blend OOF MAE: 484.2770503355926
-- Best weights: LightGBM 0.28, CatBoost 0.72
-- Fold scores: LightGBM [539.4349873980088, 533.2364755242635, 527.9325232074102, 529.5131165854559, 527.5686986944302]; CatBoost [496.2768103726382, 496.3073190836549, 488.7926459372694, 488.1527772014676, 491.7985930470809]
-- Prediction file check: restored to task1 stable prediction, header SaleID,price
-- Commit pushed: pending documentation commit
-- Rollback commit if any: code restored to 8190f22
-- Next task: Task 3 blend refinement
-
-
-### Task 3 Result - task3_blend_refine_cfg_q_eval
-
-- Status: keep
-- Started at: 2026-05-18T17:43:22
-- Finished at: 2026-05-18T18:09:58
-- Baseline commit: 8190f22
-- Baseline Blend OOF MAE: 483.17528941350145
-- Candidate/change: refine blend search resolution from 51 to 101 grid points and rerun cfg_q_iterations_4400 on current stable branches
-- Command: python -u code/main.py catboost_only_sweep --candidate cfg_q_iterations_4400 --experiment-note task3_blend_refine_cfg_q_eval --baseline-blend 483.17528941350145 --baseline-commit 8190f22
-- LightGBM OOF MAE: 530.2642031884868
-- CatBoost OOF MAE: 490.8413807472432
-- Blend OOF MAE: 483.1713438531722
-- Best weights: LightGBM 0.27, CatBoost 0.73
-- Fold scores: LightGBM [535.2210926036495, 532.9259499831855, 526.8230300397627, 528.7427922007341, 527.6081511151025]; CatBoost [494.12883918397375, 496.17446295398645, 487.87079826675654, 486.114736507389, 489.9180668241097]
-- Prediction file check: passed, header SaleID,price
-- Commit pushed: 4a50ecf
-- Rollback commit if any: none
-- Next task: Task 4 CatBoost structure tuning
-
-
-### Task 4 Result - task4_depth9_cfg_t_eval
-
-- Status: keep
-- Started at: 2026-05-18T18:15:57
-- Finished at: 2026-05-18T18:49:04
-- Baseline commit: 4a50ecf
-- Baseline Blend OOF MAE: 483.1713438531722
-- Candidate/change: add cfg_t_depth_9_iter4400 by changing only CatBoost depth from 8 to 9 while keeping iterations=4400, learning_rate=0.03, l2_leaf_reg=9.0, od_wait=140
-- Command: python -u code/main.py catboost_only_sweep --candidate cfg_t_depth_9_iter4400 --experiment-note task4_depth9_cfg_t_eval --baseline-blend 483.1713438531722 --baseline-commit 4a50ecf
-- LightGBM OOF MAE: 530.2642031884868
-- CatBoost OOF MAE: 489.53917414313685
-- Blend OOF MAE: 482.03784116490414
-- Best weights: LightGBM 0.27, CatBoost 0.73
-- Fold scores: LightGBM [535.2210926036495, 532.9259499831855, 526.8230300397627, 528.7427922007341, 527.6081511151025]; CatBoost [493.6952723244014, 491.33982441310206, 486.93385262494326, 487.25305623185795, 488.4738651213799]
-- Prediction file check: passed, header SaleID,price
-- Commit pushed: e1ae9fc
-- Rollback commit if any: none
-- Next task: none, goal threshold satisfied
-
 ## Current Recommendation
 
-Goal threshold reached. Task 4 kept the bounded CatBoost structure change `depth 8 -> 9`, lowering Blend OOF MAE to `482.03784116490414`. No further experiment is required unless a new optimization target is opened.
+Start with Task 1. The most defensible next step is a bounded CatBoost regularization check around the current best `depth=9` candidate, because the latest kept improvement came from CatBoost structure rather than from adding more broad features. If the first two CatBoost structure checks fail, switch quickly to one small feature block instead of staying in the same direction.
 

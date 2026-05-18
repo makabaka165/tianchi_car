@@ -2,14 +2,14 @@
 
 ## Current Baseline
 
-- Stable commit: `8190f22`
-- Stable experiment: `task1_lgb_refresh_cfg_q_eval`
+- Stable commit: `4a50ecf`
+- Stable experiment: `task3_blend_refine_cfg_q_eval`
 - Stable candidate: `cfg_q_iterations_4400`
 - Stable CatBoost params: `iterations=4400`, `learning_rate=0.03`, `depth=8`, `l2_leaf_reg=9.0`, `od_wait=140`
 - LightGBM OOF MAE: `530.2642031884868`
 - CatBoost OOF MAE: `490.8413807472432`
-- Blend OOF MAE: `483.17528941350145`
-- Best weights: LightGBM `0.28`, CatBoost `0.72`
+- Blend OOF MAE: `483.1713438531722`
+- Best weights: LightGBM `0.27`, CatBoost `0.73`
 - Goal threshold: `Blend OOF MAE <= 482.8`
 
 ## Standing Checklist For Every Round
@@ -51,7 +51,7 @@
 
 ### Task 3 - Blend refinement after branch updates
 
-- Status: `pending`
+- Status: `keep`
 - Direction: blend search refinement
 - Code area: `code/main.py` only if search resolution or blend logic actually needs a controlled adjustment.
 - Purpose: capture additional gain from better branch balance after LightGBM or feature improvements.
@@ -60,7 +60,7 @@
 
 ### Task 4 - CatBoost structure tuning only after non-iteration work
 
-- Status: `blocked until at least two non-iteration directions are tried`
+- Status: `pending`
 - Direction: CatBoost structure tuning
 - Code area: `code/main.py` candidate block only.
 - Allowed parameters: choose one of `depth`, `l2_leaf_reg`, or another bounded overfitting-control parameter per round.
@@ -132,7 +132,27 @@ Use this template after each round:
 - Rollback commit if any: code restored to 8190f22
 - Next task: Task 3 blend refinement
 
+
+### Task 3 Result - task3_blend_refine_cfg_q_eval
+
+- Status: keep
+- Started at: 2026-05-18T17:43:22
+- Finished at: 2026-05-18T18:09:58
+- Baseline commit: 8190f22
+- Baseline Blend OOF MAE: 483.17528941350145
+- Candidate/change: refine blend search resolution from 51 to 101 grid points and rerun cfg_q_iterations_4400 on current stable branches
+- Command: python -u code/main.py catboost_only_sweep --candidate cfg_q_iterations_4400 --experiment-note task3_blend_refine_cfg_q_eval --baseline-blend 483.17528941350145 --baseline-commit 8190f22
+- LightGBM OOF MAE: 530.2642031884868
+- CatBoost OOF MAE: 490.8413807472432
+- Blend OOF MAE: 483.1713438531722
+- Best weights: LightGBM 0.27, CatBoost 0.73
+- Fold scores: LightGBM [535.2210926036495, 532.9259499831855, 526.8230300397627, 528.7427922007341, 527.6081511151025]; CatBoost [494.12883918397375, 496.17446295398645, 487.87079826675654, 486.114736507389, 489.9180668241097]
+- Prediction file check: passed, header SaleID,price
+- Commit pushed: 4a50ecf
+- Rollback commit if any: none
+- Next task: Task 4 CatBoost structure tuning
+
 ## Current Recommendation
 
-Task 2 v-derived interactions rolled back because the blended score worsened to `484.2770503355926`. Next run Task 3 blend refinement on top of the current stable branches; do not add new branch features in the same round.
+Task 3 kept a finer blend search and improved the score slightly to `483.1713438531722`. Next run Task 4 with one bounded CatBoost structure parameter change; do not resume pure iterations.
 

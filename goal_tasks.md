@@ -27,7 +27,7 @@
 
 ### Task 1 - CatBoost regularization around current best depth 9 candidate
 
-- Status: `pending`
+- Status: `rollback`
 - Direction: CatBoost structure tuning
 - Code area: `code/main.py` candidate block only.
 - Candidate name: `cfg_u_l2_10_depth9_iter4400`
@@ -40,7 +40,7 @@
 
 ### Task 2 - CatBoost overfitting control follow-up
 
-- Status: `blocked until Task 1 finishes or is skipped for a documented reason`
+- Status: `pending`
 - Direction: CatBoost structure tuning
 - Code area: `code/main.py` candidate block only.
 - Candidate name: `cfg_v_od160_depth9_iter4400`
@@ -94,7 +94,27 @@ Use this template after each round:
 - Next task:
 ```
 
+
+### Task 1 Result - task1_l2_10_depth9_eval
+
+- Status: rollback
+- Started at: 2026-05-18T19:37:24
+- Finished at: 2026-05-18T20:10:22
+- Baseline commit: e1ae9fc
+- Baseline Blend OOF MAE: 482.03784116490414
+- Candidate/change: cfg_u_l2_10_depth9_iter4400, change only l2_leaf_reg from 9.0 to 10.0 on the current best depth-9 candidate
+- Command: python -u code/main.py catboost_only_sweep --candidate cfg_u_l2_10_depth9_iter4400 --experiment-note task1_l2_10_depth9_eval --baseline-blend 482.03784116490414 --baseline-commit e1ae9fc
+- LightGBM OOF MAE: 530.2642031884868
+- CatBoost OOF MAE: 489.8325008519237
+- Blend OOF MAE: 482.4913544274493
+- Best weights: LightGBM 0.27, CatBoost 0.73
+- Fold scores: LightGBM [535.2210926036495, 532.9259499831855, 526.8230300397627, 528.7427922007341, 527.6081511151025]; CatBoost [493.31593029580733, 492.32610039161375, 488.00924971638057, 488.2480633778327, 487.2631604779842]
+- Prediction file check: restored to stable prediction, header SaleID,price
+- Commit pushed: pending documentation commit
+- Rollback commit if any: code restored to e1ae9fc
+- Next task: Task 2 cfg_v_od160_depth9_iter4400
+
 ## Current Recommendation
 
-Start with Task 1. The most defensible next step is a bounded CatBoost regularization check around the current best `depth=9` candidate, because the latest kept improvement came from CatBoost structure rather than from adding more broad features. If the first two CatBoost structure checks fail, switch quickly to one small feature block instead of staying in the same direction.
+Task 1 regularization rolled back because `482.4913544274493` was worse than `482.03784116490414`. Next run Task 2 with `od_wait 140 -> 160`; if that also fails, switch quickly to Task 3 feature work instead of staying in CatBoost structure tuning.
 

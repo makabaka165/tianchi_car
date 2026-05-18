@@ -2,13 +2,13 @@
 
 ## Current Baseline
 
-- Stable commit: `b031884`
-- Stable experiment: `cfg_p_iterations_4200_eval`
-- Stable candidate: `cfg_p_iterations_4200`
-- Stable CatBoost params: `iterations=4200`, `learning_rate=0.03`, `depth=8`, `l2_leaf_reg=9.0`, `od_wait=140`
+- Stable commit: `9697305`
+- Stable experiment: `cfg_q_iterations_4400_eval`
+- Stable candidate: `cfg_q_iterations_4400`
+- Stable CatBoost params: `iterations=4400`, `learning_rate=0.03`, `depth=8`, `l2_leaf_reg=9.0`, `od_wait=140`
 - LightGBM OOF MAE: `538.2950818411284`
-- CatBoost OOF MAE: `497.7227619032235`
-- Blend OOF MAE: `490.2366133835716`
+- CatBoost OOF MAE: `496.5144844289851`
+- Blend OOF MAE: `489.3423041102956`
 - Best weights: LightGBM `0.28`, CatBoost `0.72`
 - Goal threshold: `Blend OOF MAE <= 488.8`
 
@@ -27,7 +27,7 @@
 
 ### Task 1 - Pure iteration neighbor after current best
 
-- Status: `pending`
+- Status: `keep`
 - Candidate name: `cfg_q_iterations_4400`
 - Code change: add one CatBoost candidate in `code/main.py`.
 - Params: `iterations=4400`, `learning_rate=0.03`, `depth=8`, `l2_leaf_reg=9.0`, `od_wait=140`.
@@ -39,7 +39,7 @@
 
 ### Task 2 - Same-compute regularization after iteration plateau
 
-- Status: `blocked until Task 1 finishes or is skipped for a documented reason`
+- Status: `pending`
 - Candidate name: `cfg_r_l2_10_iter4200`
 - Code change: add one CatBoost candidate in `code/main.py`.
 - Params: `iterations=4200`, `learning_rate=0.03`, `depth=8`, `l2_leaf_reg=10.0`, `od_wait=140`.
@@ -90,6 +90,25 @@ Use this template after each round:
 - Next task:
 ```
 
+### Task 1 Result - cfg_q_iterations_4400_eval
+
+- Status: keep
+- Started at: 2026-05-18T12:44:07
+- Finished at: 2026-05-18T13:09:47
+- Baseline commit: b031884
+- Baseline Blend OOF MAE: 490.2366133835716
+- Candidate/change: cfg_q_iterations_4400, iterations=4400, learning_rate=0.03, depth=8, l2_leaf_reg=9.0, od_wait=140
+- Command: python -u code/main.py catboost_only_sweep --candidate cfg_q_iterations_4400 --experiment-note cfg_q_iterations_4400_eval --baseline-blend 490.2366133835716 --baseline-commit b031884
+- LightGBM OOF MAE: 538.2950818411284
+- CatBoost OOF MAE: 496.5144844289851
+- Blend OOF MAE: 489.3423041102956
+- Best weights: LightGBM 0.28, CatBoost 0.72
+- Fold scores: [502.2674446842645, 500.4405521813541, 493.1370185470812, 491.02515317324384, 495.702253558982]
+- Prediction file check: passed, header SaleID,price
+- Commit pushed: 9697305
+- Rollback commit if any: none
+- Next task: Task 2 cfg_r_l2_10_iter4200
+
 ## Current Recommendation
 
-Start with Task 1. The recent sequence `3800 -> 4000 -> 4200` still improved materially, so one more pure iteration test is justified. If `4400` fails or the gain becomes marginal, stop increasing iterations and move to regularization around the latest best candidate.
+Task 1 kept `cfg_q_iterations_4400` at `489.3423041102956`, still above the `488.8` target. Next run Task 2 regularization around the latest best baseline before considering more pure iteration increases.

@@ -99,6 +99,14 @@ CATBOOST_CANDIDATES = {
         "l2_leaf_reg": 9.0,
         "od_wait": 140,
     },
+    "cfg_n_iterations_3800": {
+        "model_name": "cfg_n_iterations_3800",
+        "iterations": 3800,
+        "learning_rate": 0.03,
+        "depth": 8,
+        "l2_leaf_reg": 9.0,
+        "od_wait": 140,
+    },
 }
 
 EXPERIMENT_NAME = "catboost_lite_feature_plus_log"
@@ -497,7 +505,16 @@ def main() -> None:
         candidates,
         args.experiment_note,
     )
-    append_experiment_log(metrics, status="keep" if metrics["blend_oof_mae"] < 504.4902 else "rollback")
+    baseline_blend = resolve_baseline_blend(args.baseline_blend)
+    baseline_commit = resolve_baseline_commit(args.baseline_commit)
+    status = "keep" if baseline_blend is None or metrics["blend_oof_mae"] < baseline_blend else "rollback"
+    append_experiment_log(
+        metrics,
+        status=status,
+        baseline_blend=baseline_blend,
+        baseline_commit=baseline_commit,
+        rollback_to=None if status == "keep" else baseline_commit,
+    )
     print(json.dumps(metrics, ensure_ascii=False, indent=2))
     print(f"Saved predictions to: {PREDICTIONS_PATH}")
 

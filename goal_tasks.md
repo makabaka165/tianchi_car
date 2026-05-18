@@ -2,14 +2,14 @@
 
 ## Current Baseline
 
-- Stable commit: `e1ae9fc`
-- Stable experiment: `task4_depth9_cfg_t_eval`
+- Stable commit: `7eb888a`
+- Stable experiment: `task4_lgb_leaves127_cfg_t_eval`
 - Stable candidate: `cfg_t_depth_9_iter4400`
 - Stable CatBoost params: `iterations=4400`, `learning_rate=0.03`, `depth=9`, `l2_leaf_reg=9.0`, `od_wait=140`
-- LightGBM OOF MAE: `530.2642031884868`
+- LightGBM OOF MAE: `526.6174419083302`
 - CatBoost OOF MAE: `489.53917414313685`
-- Blend OOF MAE: `482.03784116490414`
-- Best weights: LightGBM `0.27`, CatBoost `0.73`
+- Blend OOF MAE: `481.39377557629706`
+- Best weights: LightGBM `0.29`, CatBoost `0.71`
 - Goal threshold: `Blend OOF MAE <= 481.2`
 
 ## Standing Checklist For Every Round
@@ -174,5 +174,5 @@ Use this template after each round:
 
 ## Current Recommendation
 
-Task 4 produced a real kept gain by strengthening the LightGBM branch while leaving the best CatBoost candidate unchanged. The next round should stay on the improved LightGBM branch and test one regularization-only follow-up, preferably `reg_lambda 0.2 -> 0.3`, before revisiting blend-only refinements.
+Task 4 produced a real kept gain by strengthening the LightGBM branch while leaving the best CatBoost candidate unchanged. The new stable baseline is commit `7eb888a` with `Blend OOF MAE = 481.39377557629706`. The next round should stay on the improved LightGBM branch and test one regularization-only follow-up, preferably `reg_lambda 0.2 -> 0.3`, before revisiting blend-only refinements.
 

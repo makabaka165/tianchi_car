@@ -80,6 +80,8 @@ def convert_types(df: pd.DataFrame, is_train: bool) -> pd.DataFrame:
 
 def build_features(df: pd.DataFrame, is_train: bool) -> pd.DataFrame:
     out = convert_types(df, is_train=is_train)
+    v_cols = [col for col in [f"v_{i}" for i in range(15)] if col in out.columns]
+    v_block = out[v_cols].astype("float32") if v_cols else None
 
     reg_dt, reg_invalid = _parse_date_column(out["regDate"])
     create_dt, create_invalid = _parse_date_column(out["creatDate"])
@@ -108,6 +110,14 @@ def build_features(df: pd.DataFrame, is_train: bool) -> pd.DataFrame:
     out["kilometer_log1p"] = np.log1p(out["kilometer"])
     out["power_x_kilometer"] = out["power"] * out["kilometer"]
     out["power_per_age"] = out["power"] / (out["car_age_days"].abs() + 1.0)
+
+    if v_block is not None:
+        out["v_sum"] = v_block.sum(axis=1)
+        out["v_mean"] = v_block.mean(axis=1)
+        out["v_std"] = v_block.std(axis=1).fillna(0.0)
+        out["v_min"] = v_block.min(axis=1)
+        out["v_max"] = v_block.max(axis=1)
+        out["v_range"] = out["v_max"] - out["v_min"]
 
     out["brand_model"] = (
         out["brand"].fillna(-1).astype("Int64").astype("string")

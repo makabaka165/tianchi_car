@@ -2,14 +2,14 @@
 
 ## Current Baseline
 
-- Stable commit: `9697305`
-- Stable experiment: `cfg_q_iterations_4400_eval`
+- Stable commit: `fa49dd1`
+- Stable experiment: `task4_vstats_cfg_q_eval`
 - Stable candidate: `cfg_q_iterations_4400`
 - Stable CatBoost params: `iterations=4400`, `learning_rate=0.03`, `depth=8`, `l2_leaf_reg=9.0`, `od_wait=140`
-- LightGBM OOF MAE: `538.2950818411284`
-- CatBoost OOF MAE: `496.5144844289851`
-- Blend OOF MAE: `489.3423041102956`
-- Best weights: LightGBM `0.28`, CatBoost `0.72`
+- LightGBM OOF MAE: `535.3462383501875`
+- CatBoost OOF MAE: `490.8413807472432`
+- Blend OOF MAE: `483.96430195171246`
+- Best weights: LightGBM `0.26`, CatBoost `0.74`
 - Goal threshold: `Blend OOF MAE <= 488.8`
 
 ## Standing Checklist For Every Round
@@ -58,9 +58,9 @@
 
 ### Task 4 - Lightweight feature experiment if parameter gains stall
 
-- Status: `pending`
+- Status: `keep`
 - Code area: `feature/preprocess.py` only.
-- Allowed feature family: low-risk numeric interaction or consistency indicators available in both train and test.
+- Allowed feature family: low-risk numeric interaction or consistency indicators available in both train and test. Current subtask: aggregate `v_0..v_14` statistics.
 - Avoid target leakage and avoid train-only statistics unless implemented with fold-aware logic.
 - After feature changes, run the current best CatBoost candidate and refresh any incompatible caches according to the existing pipeline behavior.
 - Keep rule: keep only if `blend_oof_mae` strictly improves over the latest stable baseline and fold volatility does not visibly worsen.
@@ -149,6 +149,26 @@ Use this template after each round:
 - Rollback commit if any: code restored to 9697305
 - Next task: Task 4 lightweight feature experiment
 
+
+### Task 4 Result - task4_vstats_cfg_q_eval
+
+- Status: keep
+- Started at: 2026-05-18T14:29:09
+- Finished at: 2026-05-18T15:14:54
+- Baseline commit: 9697305
+- Baseline Blend OOF MAE: 489.3423041102956
+- Candidate/change: add v_0..v_14 aggregate features (v_sum, v_mean, v_std, v_min, v_max, v_range) and rerun cfg_q_iterations_4400 with refreshed LightGBM cache
+- Command: python -u code/main.py catboost_only_sweep --candidate cfg_q_iterations_4400 --experiment-note task4_vstats_cfg_q_eval --baseline-blend 489.3423041102956 --baseline-commit 9697305
+- LightGBM OOF MAE: 535.3462383501875
+- CatBoost OOF MAE: 490.8413807472432
+- Blend OOF MAE: 483.96430195171246
+- Best weights: LightGBM 0.26, CatBoost 0.74
+- Fold scores: LightGBM [543.5575627494669, 536.3369752680196, 531.3098576535263, 532.524097320809, 533.0026987591158]; CatBoost [494.12883918397375, 496.17446295398645, 487.87079826675654, 486.114736507389, 489.9180668241097]
+- Prediction file check: passed, header SaleID,price
+- Commit pushed: fa49dd1
+- Rollback commit if any: none
+- Next task: none, goal threshold satisfied
+
 ## Current Recommendation
 
-Task 3 `cfg_s_od160_iter4200` also rolled back. Two parameter directions have now failed after the `cfg_q` baseline, so the next stage must move to Task 4 lightweight no-leakage feature work rather than continuing CatBoost parameter tweaks.
+Goal threshold reached. Task 4 kept the `v_0..v_14` aggregate feature family with the current best CatBoost candidate, bringing Blend OOF MAE to `483.96430195171246`. No further experiment is required unless a new optimization goal is opened.

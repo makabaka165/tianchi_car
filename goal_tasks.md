@@ -62,10 +62,10 @@
 
 ### Task 4 - LightGBM follow-up only if needed
 
-- Status: `keep`
+- Status: `rollback`
 - Direction: LightGBM follow-up tuning
 - Code area: `model/train.py` only, plus minimal calling path if necessary.
-- Purpose: revisit the LightGBM branch only if CatBoost structure tuning and the next feature block fail to produce enough gain. Latest kept subtask: increase num_leaves from 95 to 127 with all other LightGBM params fixed.
+- Purpose: revisit the LightGBM branch only if CatBoost structure tuning and the next feature block fail to produce enough gain. Last attempted subtask: increase reg_lambda from 0.2 to 0.3 with all other LightGBM and CatBoost settings fixed at the current stable baseline.
 - Constraint: keep the training entry shape stable and make only one parameter change group per round.
 - Keep rule: keep only if the final blended `blend_oof_mae` is strictly lower than the latest stable baseline.
 
@@ -172,7 +172,26 @@ Use this template after each round:
 - Rollback commit if any: none
 - Next task: LightGBM near-field follow-up around the kept leaves-127 branch
 
+### Task 5 Result - task5_lgb_reglambda03_cfg_t_eval
+
+- Status: rollback
+- Started at: 2026-05-19T02:07:10
+- Finished at: 2026-05-19T02:54:51
+- Baseline commit: 7eb888a
+- Baseline Blend OOF MAE: 481.39377557629706
+- Candidate/change: LightGBM reg_lambda 0.2 -> 0.3; CatBoost kept at cfg_t_depth_9_iter4400
+- Command: python -u code/main.py catboost_only_sweep --candidate cfg_t_depth_9_iter4400 --experiment-note task5_lgb_reglambda03_cfg_t_eval --baseline-blend 481.39377557629706 --baseline-commit 7eb888a
+- LightGBM OOF MAE: 527.1386978856078
+- CatBoost OOF MAE: 489.53917414313685
+- Blend OOF MAE: 481.4606157775679
+- Best weights: LightGBM 0.28, CatBoost 0.72
+- Fold scores: LightGBM [534.0191487528388, 529.4135666596577, 523.9159609023715, 527.2355111152879, 521.1093019978832]; CatBoost [493.6952723244014, 491.33982441310206, 486.93385262494326, 487.25305623185795, 488.4738651213799]
+- Prediction file check: restored to stable prediction, header SaleID,price
+- Commit pushed: pending rollback commit
+- Rollback commit if any: code restored to 7eb888a; metrics, predictions, and LightGBM cache restored from 20260519T020710 backup
+- Next task: LightGBM near-field follow-up with a different single variable, preferably reg_alpha 0.2 -> 0.3
+
 ## Current Recommendation
 
-Task 4 produced a real kept gain by strengthening the LightGBM branch while leaving the best CatBoost candidate unchanged. The new stable baseline is commit `7eb888a` with `Blend OOF MAE = 481.39377557629706`. The next round should stay on the improved LightGBM branch and test one regularization-only follow-up, preferably `reg_lambda 0.2 -> 0.3`, before revisiting blend-only refinements.
+The `reg_lambda 0.2 -> 0.3` follow-up weakened the LightGBM branch and slightly worsened the final blend, so that regularization direction should not be kept. The next round should stay on the stable `7eb888a` branch and test a different single LightGBM variable, with `reg_alpha 0.2 -> 0.3` now the cleanest next candidate.
 

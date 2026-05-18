@@ -49,7 +49,7 @@
 
 ### Task 3 - Slightly stronger overfitting control
 
-- Status: `pending`
+- Status: `rollback`
 - Candidate name: `cfg_s_od160_iter4200`
 - Code change: add one CatBoost candidate in `code/main.py`.
 - Params: `iterations=4200`, `learning_rate=0.03`, `depth=8`, `l2_leaf_reg=9.0`, `od_wait=160`.
@@ -58,7 +58,7 @@
 
 ### Task 4 - Lightweight feature experiment if parameter gains stall
 
-- Status: `blocked until at least two parameter experiments fail or improvement becomes negligible`
+- Status: `pending`
 - Code area: `feature/preprocess.py` only.
 - Allowed feature family: low-risk numeric interaction or consistency indicators available in both train and test.
 - Avoid target leakage and avoid train-only statistics unless implemented with fold-aware logic.
@@ -129,6 +129,26 @@ Use this template after each round:
 - Rollback commit if any: code restored to 9697305
 - Next task: Task 3 cfg_s_od160_iter4200
 
+
+### Task 3 Result - cfg_s_od160_iter4200_eval
+
+- Status: rollback
+- Started at: 2026-05-18T13:53:18
+- Finished at: 2026-05-18T14:18:00
+- Baseline commit: 9697305
+- Baseline Blend OOF MAE: 489.3423041102956
+- Candidate/change: cfg_s_od160_iter4200, iterations=4200, learning_rate=0.03, depth=8, l2_leaf_reg=9.0, od_wait=160
+- Command: python -u code/main.py catboost_only_sweep --candidate cfg_s_od160_iter4200 --experiment-note cfg_s_od160_iter4200_eval --baseline-blend 489.3423041102956 --baseline-commit 9697305
+- LightGBM OOF MAE: 538.2950818411284
+- CatBoost OOF MAE: 497.7227619032235
+- Blend OOF MAE: 490.2366133835716
+- Best weights: LightGBM 0.28, CatBoost 0.72
+- Fold scores: [503.61517916304774, 501.74759209051547, 494.2228763268931, 492.1676202537083, 496.860541681953]
+- Prediction file check: restored to cfg_q stable prediction, header SaleID,price
+- Commit pushed: pending documentation commit
+- Rollback commit if any: code restored to 9697305
+- Next task: Task 4 lightweight feature experiment
+
 ## Current Recommendation
 
-Task 2 `cfg_r_l2_10_iter4200` rolled back because `490.93110818274977` was worse than `489.3423041102956`. Next run Task 3 `cfg_s_od160_iter4200`; if it fails, two parameter directions have failed and the next stage should move to lightweight features or revisit pure iterations only with explicit justification.
+Task 3 `cfg_s_od160_iter4200` also rolled back. Two parameter directions have now failed after the `cfg_q` baseline, so the next stage must move to Task 4 lightweight no-leakage feature work rather than continuing CatBoost parameter tweaks.

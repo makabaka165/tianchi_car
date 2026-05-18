@@ -2,14 +2,14 @@
 
 ## Current Baseline
 
-- Stable commit: `62dffdb`
-- Stable experiment: `task4_vstats_cfg_q_eval`
+- Stable commit: `8190f22`
+- Stable experiment: `task1_lgb_refresh_cfg_q_eval`
 - Stable candidate: `cfg_q_iterations_4400`
 - Stable CatBoost params: `iterations=4400`, `learning_rate=0.03`, `depth=8`, `l2_leaf_reg=9.0`, `od_wait=140`
-- LightGBM OOF MAE: `535.3462383501875`
+- LightGBM OOF MAE: `530.2642031884868`
 - CatBoost OOF MAE: `490.8413807472432`
-- Blend OOF MAE: `483.96430195171246`
-- Best weights: LightGBM `0.26`, CatBoost `0.74`
+- Blend OOF MAE: `483.17528941350145`
+- Best weights: LightGBM `0.28`, CatBoost `0.72`
 - Goal threshold: `Blend OOF MAE <= 482.8`
 
 ## Standing Checklist For Every Round
@@ -27,7 +27,7 @@
 
 ### Task 1 - LightGBM branch refresh on current feature set
 
-- Status: `pending`
+- Status: `keep`
 - Direction: LightGBM improvement
 - Code area: `model/train.py` and only the minimal calling path required by the existing pipeline.
 - Primary purpose: improve the weaker LightGBM branch now that `v_*` aggregate features have already proven useful.
@@ -40,7 +40,7 @@
 
 ### Task 2 - One additional low-risk v-derived interaction block
 
-- Status: `blocked until Task 1 finishes or is skipped for a documented reason`
+- Status: `pending`
 - Direction: lightweight feature engineering
 - Code area: `feature/preprocess.py` only.
 - Allowed family: one coherent group of low-risk derived features built from existing stable columns, for example interactions involving `v_mean`, `v_std`, `v_range`, `power_log1p`, `kilometer_log1p`, or `car_age_years`.
@@ -92,7 +92,27 @@ Use this template after each round:
 - Next task:
 ```
 
+
+### Task 1 Result - task1_lgb_refresh_cfg_q_eval
+
+- Status: keep
+- Started at: 2026-05-18T15:36:06
+- Finished at: 2026-05-18T16:28:40
+- Baseline commit: 62dffdb
+- Baseline Blend OOF MAE: 483.96430195171246
+- Candidate/change: LightGBM parameter refresh on current feature set; num_leaves 63 -> 95, reg_alpha 0.1 -> 0.2, reg_lambda 0.1 -> 0.2, then refresh cache and rerun cfg_q_iterations_4400
+- Command: python -u code/main.py catboost_only_sweep --candidate cfg_q_iterations_4400 --experiment-note task1_lgb_refresh_cfg_q_eval --baseline-blend 483.96430195171246 --baseline-commit 62dffdb
+- LightGBM OOF MAE: 530.2642031884868
+- CatBoost OOF MAE: 490.8413807472432
+- Blend OOF MAE: 483.17528941350145
+- Best weights: LightGBM 0.28, CatBoost 0.72
+- Fold scores: LightGBM [535.2210926036495, 532.9259499831855, 526.8230300397627, 528.7427922007341, 527.6081511151025]; CatBoost [494.12883918397375, 496.17446295398645, 487.87079826675654, 486.114736507389, 489.9180668241097]
+- Prediction file check: passed, header SaleID,price
+- Commit pushed: 8190f22
+- Rollback commit if any: none
+- Next task: Task 2 low-risk v-derived interaction block
+
 ## Current Recommendation
 
-Start with Task 1. The current blended result is already strong, but the LightGBM branch remains materially weaker than CatBoost, even after the new `v_*` aggregate block. The most defensible next gain source is to refresh and strengthen LightGBM first, then re-check the blend before adding more CatBoost complexity.
+Task 1 improved the LightGBM branch and lowered the blended score to `483.17528941350145`, but the goal `<= 482.8` is still not met. Next run Task 2 with one coherent low-risk v-derived interaction block; do not add more LightGBM changes in the same round.
 

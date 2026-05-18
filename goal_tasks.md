@@ -39,7 +39,7 @@
 
 ### Task 2 - Same-compute regularization after iteration plateau
 
-- Status: `pending`
+- Status: `rollback`
 - Candidate name: `cfg_r_l2_10_iter4200`
 - Code change: add one CatBoost candidate in `code/main.py`.
 - Params: `iterations=4200`, `learning_rate=0.03`, `depth=8`, `l2_leaf_reg=10.0`, `od_wait=140`.
@@ -49,7 +49,7 @@
 
 ### Task 3 - Slightly stronger overfitting control
 
-- Status: `blocked until Task 2 finishes or is skipped for a documented reason`
+- Status: `pending`
 - Candidate name: `cfg_s_od160_iter4200`
 - Code change: add one CatBoost candidate in `code/main.py`.
 - Params: `iterations=4200`, `learning_rate=0.03`, `depth=8`, `l2_leaf_reg=9.0`, `od_wait=160`.
@@ -109,6 +109,26 @@ Use this template after each round:
 - Rollback commit if any: none
 - Next task: Task 2 cfg_r_l2_10_iter4200
 
+
+### Task 2 Result - cfg_r_l2_10_iter4200_eval
+
+- Status: rollback
+- Started at: 2026-05-18T13:19:35
+- Finished at: 2026-05-18T13:44:13
+- Baseline commit: 9697305
+- Baseline Blend OOF MAE: 489.3423041102956
+- Candidate/change: cfg_r_l2_10_iter4200, iterations=4200, learning_rate=0.03, depth=8, l2_leaf_reg=10.0, od_wait=140
+- Command: python -u code/main.py catboost_only_sweep --candidate cfg_r_l2_10_iter4200 --experiment-note cfg_r_l2_10_iter4200_eval --baseline-blend 489.3423041102956 --baseline-commit 9697305
+- LightGBM OOF MAE: 538.2950818411284
+- CatBoost OOF MAE: 498.7893635663284
+- Blend OOF MAE: 490.93110818274977
+- Best weights: LightGBM 0.28, CatBoost 0.72
+- Fold scores: [502.8952189693916, 502.27204317354324, 497.8279570963196, 494.30377639158615, 496.6478222008014]
+- Prediction file check: restored to cfg_q stable prediction, header SaleID,price
+- Commit pushed: pending documentation commit
+- Rollback commit if any: code restored to 9697305
+- Next task: Task 3 cfg_s_od160_iter4200
+
 ## Current Recommendation
 
-Task 1 kept `cfg_q_iterations_4400` at `489.3423041102956`, still above the `488.8` target. Next run Task 2 regularization around the latest best baseline before considering more pure iteration increases.
+Task 2 `cfg_r_l2_10_iter4200` rolled back because `490.93110818274977` was worse than `489.3423041102956`. Next run Task 3 `cfg_s_od160_iter4200`; if it fails, two parameter directions have failed and the next stage should move to lightweight features or revisit pure iterations only with explicit justification.

@@ -143,7 +143,7 @@ def search_blend_weight(
 ) -> tuple[float, float]:
     best_weight = 0.0
     best_mae = float("inf")
-    for cat_weight in np.linspace(0.0, 1.0, 51):
+    for cat_weight in np.linspace(0.0, 1.0, 101):
         blended = (1.0 - cat_weight) * lightgbm_oof + cat_weight * catboost_oof
         score = mean_absolute_error(y_true, blended)
         if score < best_mae:

@@ -51,10 +51,10 @@
 
 ### Task 3 - One narrowly scoped feature extension
 
-- Status: `pending`
+- Status: `rollback`
 - Direction: lightweight feature engineering
 - Code area: `feature/preprocess.py` only.
-- Allowed family: one tightly bounded feature block built from already-successful stable signals, for example `v_range`, `v_std`, `power_log1p`, `kilometer_log1p`, or `car_age_years`.
+- Allowed family: one tightly bounded feature block built from already-successful stable signals, for example `v_range`, `v_std`, `power_log1p`, `kilometer_log1p`, or `car_age_years`. Last attempted subtask: age-normalized interactions for power/kilometer/v statistics.
 - Constraint: add one coherent family only; do not bundle unrelated features.
 - Constraint: no target leakage and no train-only statistics unless implemented through existing fold-aware logic.
 - If the change affects LightGBM inputs, refresh the LightGBM cache before evaluation.
@@ -62,7 +62,7 @@
 
 ### Task 4 - LightGBM follow-up only if needed
 
-- Status: `blocked until at least one feature or CatBoost direction is exhausted`
+- Status: `pending`
 - Direction: LightGBM follow-up tuning
 - Code area: `model/train.py` only, plus minimal calling path if necessary.
 - Purpose: revisit the LightGBM branch only if CatBoost structure tuning and the next feature block fail to produce enough gain.
@@ -134,7 +134,26 @@ Use this template after each round:
 - Rollback commit if any: code restored to e1ae9fc
 - Next task: Task 3 one narrowly scoped feature extension
 
+### Task 3 Result - task3_age_usage_cfg_t_eval
+
+- Status: rollback
+- Started at: 2026-05-18T21:15:14
+- Finished at: 2026-05-18T22:00:30
+- Baseline commit: e1ae9fc
+- Baseline Blend OOF MAE: 482.03784116490414
+- Candidate/change: age-normalized interactions for power_log1p, kilometer_log1p, v_range, and v_std against car_age_years
+- Command: python -u code/main.py catboost_only_sweep --candidate cfg_t_depth_9_iter4400 --experiment-note task3_age_usage_cfg_t_eval --baseline-blend 482.03784116490414 --baseline-commit e1ae9fc
+- LightGBM OOF MAE: 531.1280636750124
+- CatBoost OOF MAE: 492.4269839188377
+- Blend OOF MAE: 484.3071509217038
+- Best weights: LightGBM 0.28, CatBoost 0.72
+- Fold scores: LightGBM [536.7833856716709, 534.3058305634485, 529.4267280317765, 528.2944635575448, 526.8299105506218]; CatBoost [495.1977134628182, 495.1625166727634, 489.20774655406115, 490.22135062299276, 492.3455922815534]
+- Prediction file check: restored to stable prediction, header SaleID,price
+- Commit pushed: pending documentation commit
+- Rollback commit if any: code restored to e1ae9fc; metrics and predictions restored from 20260518T211514 backup
+- Next task: Task 4 LightGBM single-variable follow-up
+
 ## Current Recommendation
 
-Task 2 `od_wait 140 -> 160` also failed to produce a strictly better score; the blended result stayed at `482.03784116490414`. Two CatBoost structure checks are now exhausted, so the next round must switch to Task 3 with one narrowly scoped feature family.
+Task 3 age-normalized usage features degraded both the refreshed LightGBM branch and the final blend, so that direction is now exhausted for this goal stage. The next round should switch to Task 4 with one LightGBM-only parameter change, rebuild the cache on stable feature code, and compare the blended result against the same stable baseline `482.03784116490414`.
 

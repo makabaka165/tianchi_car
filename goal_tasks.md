@@ -40,10 +40,10 @@
 
 ### Task 2 - One additional low-risk v-derived interaction block
 
-- Status: `pending`
+- Status: `rollback`
 - Direction: lightweight feature engineering
 - Code area: `feature/preprocess.py` only.
-- Allowed family: one coherent group of low-risk derived features built from existing stable columns, for example interactions involving `v_mean`, `v_std`, `v_range`, `power_log1p`, `kilometer_log1p`, or `car_age_years`.
+- Allowed family: one coherent group of low-risk derived features built from existing stable columns, for example interactions involving `v_mean`, `v_std`, `v_range`, `power_log1p`, `kilometer_log1p`, or `car_age_years`. Current subtask: v-aggregate interactions with `power_log1p` and `kilometer_log1p`.
 - Constraint: do not mix multiple unrelated feature families in one round.
 - Constraint: no target leakage and no train-only statistics unless implemented with fold-aware logic already present in the pipeline.
 - Keep rule: keep only if the final blended `blend_oof_mae` is strictly lower than the latest stable baseline.
@@ -51,7 +51,7 @@
 
 ### Task 3 - Blend refinement after branch updates
 
-- Status: `blocked until Task 1 or Task 2 yields a plausible branch improvement`
+- Status: `pending`
 - Direction: blend search refinement
 - Code area: `code/main.py` only if search resolution or blend logic actually needs a controlled adjustment.
 - Purpose: capture additional gain from better branch balance after LightGBM or feature improvements.
@@ -112,7 +112,27 @@ Use this template after each round:
 - Rollback commit if any: none
 - Next task: Task 2 low-risk v-derived interaction block
 
+
+### Task 2 Result - task2_v_interactions_cfg_q_eval
+
+- Status: rollback
+- Started at: 2026-05-18T16:35:01
+- Finished at: 2026-05-18T17:17:14
+- Baseline commit: 8190f22
+- Baseline Blend OOF MAE: 483.17528941350145
+- Candidate/change: add one v-derived interaction block using v_mean/v_std/v_range with power_log1p and kilometer_log1p, then refresh cache and rerun cfg_q_iterations_4400
+- Command: python -u code/main.py catboost_only_sweep --candidate cfg_q_iterations_4400 --experiment-note task2_v_interactions_cfg_q_eval --baseline-blend 483.17528941350145 --baseline-commit 8190f22
+- LightGBM OOF MAE: 531.5371602819139
+- CatBoost OOF MAE: 492.2656291284221
+- Blend OOF MAE: 484.2770503355926
+- Best weights: LightGBM 0.28, CatBoost 0.72
+- Fold scores: LightGBM [539.4349873980088, 533.2364755242635, 527.9325232074102, 529.5131165854559, 527.5686986944302]; CatBoost [496.2768103726382, 496.3073190836549, 488.7926459372694, 488.1527772014676, 491.7985930470809]
+- Prediction file check: restored to task1 stable prediction, header SaleID,price
+- Commit pushed: pending documentation commit
+- Rollback commit if any: code restored to 8190f22
+- Next task: Task 3 blend refinement
+
 ## Current Recommendation
 
-Task 1 improved the LightGBM branch and lowered the blended score to `483.17528941350145`, but the goal `<= 482.8` is still not met. Next run Task 2 with one coherent low-risk v-derived interaction block; do not add more LightGBM changes in the same round.
+Task 2 v-derived interactions rolled back because the blended score worsened to `484.2770503355926`. Next run Task 3 blend refinement on top of the current stable branches; do not add new branch features in the same round.
 

@@ -50,7 +50,7 @@ def train_lightgbm(
             objective="mae",
             n_estimators=4000,
             learning_rate=0.03,
-            num_leaves=95,
+            num_leaves=127,
             max_depth=-1,
             subsample=0.8,
             colsample_bytree=0.8,

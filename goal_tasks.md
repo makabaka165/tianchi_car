@@ -62,10 +62,10 @@
 
 ### Task 4 - LightGBM follow-up only if needed
 
-- Status: `pending`
+- Status: `keep`
 - Direction: LightGBM follow-up tuning
 - Code area: `model/train.py` only, plus minimal calling path if necessary.
-- Purpose: revisit the LightGBM branch only if CatBoost structure tuning and the next feature block fail to produce enough gain.
+- Purpose: revisit the LightGBM branch only if CatBoost structure tuning and the next feature block fail to produce enough gain. Latest kept subtask: increase num_leaves from 95 to 127 with all other LightGBM params fixed.
 - Constraint: keep the training entry shape stable and make only one parameter change group per round.
 - Keep rule: keep only if the final blended `blend_oof_mae` is strictly lower than the latest stable baseline.
 
@@ -153,7 +153,26 @@ Use this template after each round:
 - Rollback commit if any: code restored to e1ae9fc; metrics and predictions restored from 20260518T211514 backup
 - Next task: Task 4 LightGBM single-variable follow-up
 
+### Task 4 Result - task4_lgb_leaves127_cfg_t_eval
+
+- Status: keep
+- Started at: 2026-05-18T23:46:00
+- Finished at: 2026-05-19T00:33:25
+- Baseline commit: e1ae9fc
+- Baseline Blend OOF MAE: 482.03784116490414
+- Candidate/change: LightGBM num_leaves 95 -> 127; CatBoost kept at cfg_t_depth_9_iter4400
+- Command: python -u code/main.py catboost_only_sweep --candidate cfg_t_depth_9_iter4400 --experiment-note task4_lgb_leaves127_cfg_t_eval --baseline-blend 482.03784116490414 --baseline-commit e1ae9fc
+- LightGBM OOF MAE: 526.6174419083302
+- CatBoost OOF MAE: 489.53917414313685
+- Blend OOF MAE: 481.39377557629706
+- Best weights: LightGBM 0.29, CatBoost 0.71
+- Fold scores: LightGBM [534.663656597508, 529.9643914717552, 522.2402307516778, 525.1418546805704, 521.0770760401389]; CatBoost [493.6952723244014, 491.33982441310206, 486.93385262494326, 487.25305623185795, 488.4738651213799]
+- Prediction file check: current prediction retained, header SaleID,price
+- Commit pushed: pending keep commit
+- Rollback commit if any: none
+- Next task: LightGBM near-field follow-up around the kept leaves-127 branch
+
 ## Current Recommendation
 
-Task 3 age-normalized usage features degraded both the refreshed LightGBM branch and the final blend, so that direction is now exhausted for this goal stage. The next round should switch to Task 4 with one LightGBM-only parameter change, rebuild the cache on stable feature code, and compare the blended result against the same stable baseline `482.03784116490414`.
+Task 4 produced a real kept gain by strengthening the LightGBM branch while leaving the best CatBoost candidate unchanged. The next round should stay on the improved LightGBM branch and test one regularization-only follow-up, preferably `reg_lambda 0.2 -> 0.3`, before revisiting blend-only refinements.
 

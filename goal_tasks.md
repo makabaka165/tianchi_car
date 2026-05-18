@@ -2,13 +2,13 @@
 
 ## Current Baseline
 
-- Stable commit: `4a50ecf`
-- Stable experiment: `task3_blend_refine_cfg_q_eval`
-- Stable candidate: `cfg_q_iterations_4400`
-- Stable CatBoost params: `iterations=4400`, `learning_rate=0.03`, `depth=8`, `l2_leaf_reg=9.0`, `od_wait=140`
+- Stable commit: `e1ae9fc`
+- Stable experiment: `task4_depth9_cfg_t_eval`
+- Stable candidate: `cfg_t_depth_9_iter4400`
+- Stable CatBoost params: `iterations=4400`, `learning_rate=0.03`, `depth=9`, `l2_leaf_reg=9.0`, `od_wait=140`
 - LightGBM OOF MAE: `530.2642031884868`
-- CatBoost OOF MAE: `490.8413807472432`
-- Blend OOF MAE: `483.1713438531722`
+- CatBoost OOF MAE: `489.53917414313685`
+- Blend OOF MAE: `482.03784116490414`
 - Best weights: LightGBM `0.27`, CatBoost `0.73`
 - Goal threshold: `Blend OOF MAE <= 482.8`
 
@@ -60,7 +60,7 @@
 
 ### Task 4 - CatBoost structure tuning only after non-iteration work
 
-- Status: `pending`
+- Status: `keep`
 - Direction: CatBoost structure tuning
 - Code area: `code/main.py` candidate block only.
 - Allowed parameters: choose one of `depth`, `l2_leaf_reg`, or another bounded overfitting-control parameter per round.
@@ -152,7 +152,27 @@ Use this template after each round:
 - Rollback commit if any: none
 - Next task: Task 4 CatBoost structure tuning
 
+
+### Task 4 Result - task4_depth9_cfg_t_eval
+
+- Status: keep
+- Started at: 2026-05-18T18:15:57
+- Finished at: 2026-05-18T18:49:04
+- Baseline commit: 4a50ecf
+- Baseline Blend OOF MAE: 483.1713438531722
+- Candidate/change: add cfg_t_depth_9_iter4400 by changing only CatBoost depth from 8 to 9 while keeping iterations=4400, learning_rate=0.03, l2_leaf_reg=9.0, od_wait=140
+- Command: python -u code/main.py catboost_only_sweep --candidate cfg_t_depth_9_iter4400 --experiment-note task4_depth9_cfg_t_eval --baseline-blend 483.1713438531722 --baseline-commit 4a50ecf
+- LightGBM OOF MAE: 530.2642031884868
+- CatBoost OOF MAE: 489.53917414313685
+- Blend OOF MAE: 482.03784116490414
+- Best weights: LightGBM 0.27, CatBoost 0.73
+- Fold scores: LightGBM [535.2210926036495, 532.9259499831855, 526.8230300397627, 528.7427922007341, 527.6081511151025]; CatBoost [493.6952723244014, 491.33982441310206, 486.93385262494326, 487.25305623185795, 488.4738651213799]
+- Prediction file check: passed, header SaleID,price
+- Commit pushed: e1ae9fc
+- Rollback commit if any: none
+- Next task: none, goal threshold satisfied
+
 ## Current Recommendation
 
-Task 3 kept a finer blend search and improved the score slightly to `483.1713438531722`. Next run Task 4 with one bounded CatBoost structure parameter change; do not resume pure iterations.
+Goal threshold reached. Task 4 kept the bounded CatBoost structure change `depth 8 -> 9`, lowering Blend OOF MAE to `482.03784116490414`. No further experiment is required unless a new optimization target is opened.
 

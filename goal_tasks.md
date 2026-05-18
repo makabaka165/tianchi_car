@@ -1,0 +1,95 @@
+# tianchi_car Goal Tasks
+
+## Current Baseline
+
+- Stable commit: `b031884`
+- Stable experiment: `cfg_p_iterations_4200_eval`
+- Stable candidate: `cfg_p_iterations_4200`
+- Stable CatBoost params: `iterations=4200`, `learning_rate=0.03`, `depth=8`, `l2_leaf_reg=9.0`, `od_wait=140`
+- LightGBM OOF MAE: `538.2950818411284`
+- CatBoost OOF MAE: `497.7227619032235`
+- Blend OOF MAE: `490.2366133835716`
+- Best weights: LightGBM `0.28`, CatBoost `0.72`
+- Goal threshold: `Blend OOF MAE <= 488.8`
+
+## Standing Checklist For Every Round
+
+- Check `git status --short --branch`; continue only if the server worktree is clean or the dirty files are known documentation updates from the current goal run.
+- Check `git rev-parse --short HEAD` and compare it with the current stable commit recorded above.
+- Check `user_data/metrics.json` and confirm the current stable `blend_oof_mae` before choosing a new experiment.
+- Confirm LightGBM cache exists: `user_data/lgb_cache_predictions.npz` and `user_data/lgb_cache_meta.json`.
+- Check no duplicate training process is running with `pgrep -af 'code/main.py|catboost_only_sweep'`.
+- Back up `user_data/metrics.json` and `prediction_result/predictions.csv` before training.
+- Run one experiment only, then decide keep or rollback using `blend_oof_mae`.
+- Append result details to the root Markdown record file identified by UTF-8 byte prefix `23 20 e8 ae b0 e5 bd 95`; do not hard-code the displayed filename and update this file.
+
+## Task Queue
+
+### Task 1 - Pure iteration neighbor after current best
+
+- Status: `pending`
+- Candidate name: `cfg_q_iterations_4400`
+- Code change: add one CatBoost candidate in `code/main.py`.
+- Params: `iterations=4400`, `learning_rate=0.03`, `depth=8`, `l2_leaf_reg=9.0`, `od_wait=140`.
+- Command:
+  `python -u code/main.py catboost_only_sweep --candidate cfg_q_iterations_4400 --experiment-note cfg_q_iterations_4400_eval --baseline-blend 490.2366133835716 --baseline-commit b031884`
+- Keep rule: keep only if `blend_oof_mae < 490.2366133835716`.
+- If kept: commit message `Promote cfg_q iterations 4400`, push `origin/main`, update the current baseline block.
+- If failed: revert `code/main.py` to `b031884`, restore backed-up metrics and predictions, record failure, then continue to Task 2.
+
+### Task 2 - Same-compute regularization after iteration plateau
+
+- Status: `blocked until Task 1 finishes or is skipped for a documented reason`
+- Candidate name: `cfg_r_l2_10_iter4200`
+- Code change: add one CatBoost candidate in `code/main.py`.
+- Params: `iterations=4200`, `learning_rate=0.03`, `depth=8`, `l2_leaf_reg=10.0`, `od_wait=140`.
+- Baseline: use the latest stable commit and score after Task 1, not stale values.
+- Keep rule: keep only if `blend_oof_mae` strictly improves over the latest stable baseline.
+- If failed: revert code, restore backed-up artifacts, record failure, then continue to Task 3.
+
+### Task 3 - Slightly stronger overfitting control
+
+- Status: `blocked until Task 2 finishes or is skipped for a documented reason`
+- Candidate name: `cfg_s_od160_iter4200`
+- Code change: add one CatBoost candidate in `code/main.py`.
+- Params: `iterations=4200`, `learning_rate=0.03`, `depth=8`, `l2_leaf_reg=9.0`, `od_wait=160`.
+- Purpose: test whether longer patience improves fold stability without changing model depth or learning rate.
+- Keep rule: keep only if `blend_oof_mae` strictly improves over the latest stable baseline.
+
+### Task 4 - Lightweight feature experiment if parameter gains stall
+
+- Status: `blocked until at least two parameter experiments fail or improvement becomes negligible`
+- Code area: `feature/preprocess.py` only.
+- Allowed feature family: low-risk numeric interaction or consistency indicators available in both train and test.
+- Avoid target leakage and avoid train-only statistics unless implemented with fold-aware logic.
+- After feature changes, run the current best CatBoost candidate and refresh any incompatible caches according to the existing pipeline behavior.
+- Keep rule: keep only if `blend_oof_mae` strictly improves over the latest stable baseline and fold volatility does not visibly worsen.
+
+## Result Log Template
+
+Use this template after each round:
+
+```text
+### Task N Result - <experiment_note>
+
+- Status: keep | rollback | running | blocked
+- Started at:
+- Finished at:
+- Baseline commit:
+- Baseline Blend OOF MAE:
+- Candidate/change:
+- Command:
+- LightGBM OOF MAE:
+- CatBoost OOF MAE:
+- Blend OOF MAE:
+- Best weights:
+- Fold scores:
+- Prediction file check:
+- Commit pushed:
+- Rollback commit if any:
+- Next task:
+```
+
+## Current Recommendation
+
+Start with Task 1. The recent sequence `3800 -> 4000 -> 4200` still improved materially, so one more pure iteration test is justified. If `4400` fails or the gain becomes marginal, stop increasing iterations and move to regularization around the latest best candidate.

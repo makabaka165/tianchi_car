@@ -40,7 +40,7 @@
 
 ### Task 2 - CatBoost overfitting control follow-up
 
-- Status: `pending`
+- Status: `rollback`
 - Direction: CatBoost structure tuning
 - Code area: `code/main.py` candidate block only.
 - Candidate name: `cfg_v_od160_depth9_iter4400`
@@ -51,7 +51,7 @@
 
 ### Task 3 - One narrowly scoped feature extension
 
-- Status: `blocked until at least one CatBoost structure task finishes`
+- Status: `pending`
 - Direction: lightweight feature engineering
 - Code area: `feature/preprocess.py` only.
 - Allowed family: one tightly bounded feature block built from already-successful stable signals, for example `v_range`, `v_std`, `power_log1p`, `kilometer_log1p`, or `car_age_years`.
@@ -114,7 +114,27 @@ Use this template after each round:
 - Rollback commit if any: code restored to e1ae9fc
 - Next task: Task 2 cfg_v_od160_depth9_iter4400
 
+
+### Task 2 Result - task2_od160_depth9_eval
+
+- Status: rollback
+- Started at: 2026-05-18T20:40:09
+- Finished at: 2026-05-18T21:13:08
+- Baseline commit: e1ae9fc
+- Baseline Blend OOF MAE: 482.03784116490414
+- Candidate/change: cfg_v_od160_depth9_iter4400, change only od_wait from 140 to 160 on the current best depth-9 candidate
+- Command: python -u code/main.py catboost_only_sweep --candidate cfg_v_od160_depth9_iter4400 --experiment-note task2_od160_depth9_eval --baseline-blend 482.03784116490414 --baseline-commit e1ae9fc
+- LightGBM OOF MAE: 530.2642031884868
+- CatBoost OOF MAE: 489.53917414313685
+- Blend OOF MAE: 482.03784116490414
+- Best weights: LightGBM 0.27, CatBoost 0.73
+- Fold scores: LightGBM [535.2210926036495, 532.9259499831855, 526.8230300397627, 528.7427922007341, 527.6081511151025]; CatBoost [493.6952723244014, 491.33982441310206, 486.93385262494326, 487.25305623185795, 488.4738651213799]
+- Prediction file check: restored to stable prediction, header SaleID,price
+- Commit pushed: pending documentation commit
+- Rollback commit if any: code restored to e1ae9fc
+- Next task: Task 3 one narrowly scoped feature extension
+
 ## Current Recommendation
 
-Task 1 regularization rolled back because `482.4913544274493` was worse than `482.03784116490414`. Next run Task 2 with `od_wait 140 -> 160`; if that also fails, switch quickly to Task 3 feature work instead of staying in CatBoost structure tuning.
+Task 2 `od_wait 140 -> 160` also failed to produce a strictly better score; the blended result stayed at `482.03784116490414`. Two CatBoost structure checks are now exhausted, so the next round must switch to Task 3 with one narrowly scoped feature family.
 

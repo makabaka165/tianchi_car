@@ -63,10 +63,10 @@
 ### Task 4 - LightGBM follow-up only if needed
 
 - Status: `keep`
-- Direction: blend refinement on stable branches
-- Code area: `code/main.py` only.
-- Purpose: after two failed LightGBM regularization follow-ups, switch direction and refine only the blend-weight search resolution on top of the stable LightGBM and CatBoost branches. Latest kept subtask: change blend-weight search from 0.01 step to 0.001 step.
-- Constraint: keep the upstream LightGBM and CatBoost predictions unchanged and change only the blend search resolution.
+- Direction: CatBoost bounded structure tuning
+- Code area: `code/main.py` candidate block only.
+- Purpose: after exhausting nearby LightGBM regularization and extracting the remaining blend-search slack, return to the stable depth-9 CatBoost branch and test one single-variable iteration follow-up. Latest kept subtask: increase iterations from 4400 to 4600 with all other CatBoost and LightGBM settings fixed at the stable leaves-127 plus fine-blend baseline.
+- Constraint: keep the stable LightGBM branch and fine blend search unchanged; add one CatBoost candidate only.
 - Keep rule: keep only if the final blended `blend_oof_mae` is strictly lower than the latest stable baseline.
 
 ## Result Log Template
@@ -229,7 +229,26 @@ Use this template after each round:
 - Rollback commit if any: none
 - Next task: return to CatBoost bounded structure with one new single-variable candidate
 
+### Task 8 Result - task8_cat_iter4600_cfg_w_eval
+
+- Status: keep
+- Started at: 2026-05-19T08:42:51
+- Finished at: 2026-05-19T09:18:05
+- Baseline commit: d165ec6
+- Baseline Blend OOF MAE: 481.39230680178133
+- Candidate/change: CatBoost iterations 4400 -> 4600 on the stable depth-9 branch; stable LightGBM leaves-127 branch and fine blend search kept unchanged
+- Command: python -u code/main.py catboost_only_sweep --candidate cfg_w_depth_9_iter4600 --experiment-note task8_cat_iter4600_cfg_w_eval --baseline-blend 481.39230680178133 --baseline-commit d165ec6
+- LightGBM OOF MAE: 526.6174419083302
+- CatBoost OOF MAE: 488.8264628108603
+- Blend OOF MAE: 480.87277472593655
+- Best weights: LightGBM 0.282, CatBoost 0.718
+- Fold scores: LightGBM [534.663656597508, 529.9643914717552, 522.2402307516778, 525.1418546805704, 521.0770760401389]; CatBoost [492.8788645163534, 490.8411182021084, 486.2619214733737, 486.51220387524654, 487.63820598721924]
+- Prediction file check: current prediction retained, header SaleID,price
+- Commit pushed: pending keep commit
+- Rollback commit if any: none
+- Next task: goal threshold achieved; freeze this branch as the final stable version for this stage
+
 ## Current Recommendation
 
-The finer blend search produced a real but very small kept gain, which confirms there was minor blend-search slack but not enough headroom to reach the target by blend tuning alone. The new stable baseline is commit `d165ec6` with `Blend OOF MAE = 481.39230680178133`. The next round should keep the stable LightGBM branch fixed and return to CatBoost bounded structure tuning, with a single-variable depth-9 follow-up such as increasing iterations from 4400 to 4600.
+The CatBoost `iterations 4400 -> 4600` follow-up produced a meaningful kept gain and pushed the blended OOF MAE down to `480.87277472593655`, which satisfies the stage goal `<= 481.2`. The correct next action is to freeze this branch as the final stable version for this goal stage rather than continuing opportunistic changes.
 

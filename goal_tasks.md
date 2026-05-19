@@ -2,14 +2,14 @@
 
 ## Current Baseline
 
-- Stable commit: `7eb888a`
-- Stable experiment: `task4_lgb_leaves127_cfg_t_eval`
+- Stable commit: `d165ec6`
+- Stable experiment: `task7_blend_fine1000_cfg_t_eval`
 - Stable candidate: `cfg_t_depth_9_iter4400`
 - Stable CatBoost params: `iterations=4400`, `learning_rate=0.03`, `depth=9`, `l2_leaf_reg=9.0`, `od_wait=140`
 - LightGBM OOF MAE: `526.6174419083302`
 - CatBoost OOF MAE: `489.53917414313685`
-- Blend OOF MAE: `481.39377557629706`
-- Best weights: LightGBM `0.29`, CatBoost `0.71`
+- Blend OOF MAE: `481.39230680178133`
+- Best weights: LightGBM `0.286`, CatBoost `0.714`
 - Goal threshold: `Blend OOF MAE <= 481.2`
 
 ## Standing Checklist For Every Round
@@ -231,5 +231,5 @@ Use this template after each round:
 
 ## Current Recommendation
 
-The finer blend search produced a real but very small kept gain, which confirms there was minor blend-search slack but not enough headroom to reach the target by blend tuning alone. The next round should keep the stable LightGBM branch fixed and return to CatBoost bounded structure tuning, with a single-variable depth-9 follow-up such as increasing iterations from 4400 to 4600.
+The finer blend search produced a real but very small kept gain, which confirms there was minor blend-search slack but not enough headroom to reach the target by blend tuning alone. The new stable baseline is commit `d165ec6` with `Blend OOF MAE = 481.39230680178133`. The next round should keep the stable LightGBM branch fixed and return to CatBoost bounded structure tuning, with a single-variable depth-9 follow-up such as increasing iterations from 4400 to 4600.
 

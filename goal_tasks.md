@@ -62,11 +62,11 @@
 
 ### Task 4 - LightGBM follow-up only if needed
 
-- Status: `rollback`
-- Direction: LightGBM follow-up tuning
-- Code area: `model/train.py` only, plus minimal calling path if necessary.
-- Purpose: revisit the LightGBM branch only if CatBoost structure tuning and the next feature block fail to produce enough gain. Last attempted subtask: increase reg_alpha from 0.2 to 0.3 with all other LightGBM and CatBoost settings fixed at the current stable baseline.
-- Constraint: keep the training entry shape stable and make only one parameter change group per round.
+- Status: `keep`
+- Direction: blend refinement on stable branches
+- Code area: `code/main.py` only.
+- Purpose: after two failed LightGBM regularization follow-ups, switch direction and refine only the blend-weight search resolution on top of the stable LightGBM and CatBoost branches. Latest kept subtask: change blend-weight search from 0.01 step to 0.001 step.
+- Constraint: keep the upstream LightGBM and CatBoost predictions unchanged and change only the blend search resolution.
 - Keep rule: keep only if the final blended `blend_oof_mae` is strictly lower than the latest stable baseline.
 
 ## Result Log Template
@@ -210,7 +210,26 @@ Use this template after each round:
 - Rollback commit if any: code restored to 7eb888a; metrics, predictions, and LightGBM cache restored from 20260519T042334 backup
 - Next task: switch direction to blend refinement on the kept leaves-127 branch
 
+### Task 7 Result - task7_blend_fine1000_cfg_t_eval
+
+- Status: keep
+- Started at: 2026-05-19T06:39:43
+- Finished at: 2026-05-19T07:12:57
+- Baseline commit: 7eb888a
+- Baseline Blend OOF MAE: 481.39377557629706
+- Candidate/change: blend-weight search resolution 0.01 -> 0.001; stable LightGBM and CatBoost branches unchanged
+- Command: python -u code/main.py catboost_only_sweep --candidate cfg_t_depth_9_iter4400 --experiment-note task7_blend_fine1000_cfg_t_eval --baseline-blend 481.39377557629706 --baseline-commit 7eb888a
+- LightGBM OOF MAE: 526.6174419083302
+- CatBoost OOF MAE: 489.53917414313685
+- Blend OOF MAE: 481.39230680178133
+- Best weights: LightGBM 0.286, CatBoost 0.714
+- Fold scores: LightGBM [534.663656597508, 529.9643914717552, 522.2402307516778, 525.1418546805704, 521.0770760401389]; CatBoost [493.6952723244014, 491.33982441310206, 486.93385262494326, 487.25305623185795, 488.4738651213799]
+- Prediction file check: current prediction retained, header SaleID,price
+- Commit pushed: pending keep commit
+- Rollback commit if any: none
+- Next task: return to CatBoost bounded structure with one new single-variable candidate
+
 ## Current Recommendation
 
-Two consecutive LightGBM regularization follow-ups have failed on the kept leaves-127 branch, so this direction is temporarily exhausted under the current experiment discipline. The next round should switch direction and test a single blend-refinement change in `code/main.py`, specifically a finer blend-weight search around the current best region, while keeping the stable LightGBM and CatBoost branches unchanged.
+The finer blend search produced a real but very small kept gain, which confirms there was minor blend-search slack but not enough headroom to reach the target by blend tuning alone. The next round should keep the stable LightGBM branch fixed and return to CatBoost bounded structure tuning, with a single-variable depth-9 follow-up such as increasing iterations from 4400 to 4600.
 

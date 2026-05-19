@@ -2,14 +2,14 @@
 
 ## Current Baseline
 
-- Stable commit: `d165ec6`
-- Stable experiment: `task7_blend_fine1000_cfg_t_eval`
-- Stable candidate: `cfg_t_depth_9_iter4400`
-- Stable CatBoost params: `iterations=4400`, `learning_rate=0.03`, `depth=9`, `l2_leaf_reg=9.0`, `od_wait=140`
+- Stable commit: `53c36fa`
+- Stable experiment: `task8_cat_iter4600_cfg_w_eval`
+- Stable candidate: `cfg_w_depth_9_iter4600`
+- Stable CatBoost params: `iterations=4600`, `learning_rate=0.03`, `depth=9`, `l2_leaf_reg=9.0`, `od_wait=140`
 - LightGBM OOF MAE: `526.6174419083302`
-- CatBoost OOF MAE: `489.53917414313685`
-- Blend OOF MAE: `481.39230680178133`
-- Best weights: LightGBM `0.286`, CatBoost `0.714`
+- CatBoost OOF MAE: `488.8264628108603`
+- Blend OOF MAE: `480.87277472593655`
+- Best weights: LightGBM `0.282`, CatBoost `0.718`
 - Goal threshold: `Blend OOF MAE <= 481.2`
 
 ## Standing Checklist For Every Round
@@ -250,5 +250,5 @@ Use this template after each round:
 
 ## Current Recommendation
 
-The CatBoost `iterations 4400 -> 4600` follow-up produced a meaningful kept gain and pushed the blended OOF MAE down to `480.87277472593655`, which satisfies the stage goal `<= 481.2`. The correct next action is to freeze this branch as the final stable version for this goal stage rather than continuing opportunistic changes.
+The CatBoost `iterations 4400 -> 4600` follow-up produced a meaningful kept gain and pushed the blended OOF MAE down to `480.87277472593655`, which satisfies the stage goal `<= 481.2`. The new final stable baseline is commit `53c36fa`. The correct next action is to freeze this branch as the final stable version for this goal stage rather than continuing opportunistic changes.
 
